@@ -1,0 +1,161 @@
+{
+  "info": {
+    "name": "NestJS Auth + Doctor API",
+    "_postman_id": "12345-67890-auth-doctors",
+    "description": "Collection to test NestJS backend with Google OAuth and Role-Based Auth",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Signup (Local)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test1@example.com\",\n  \"name\": \"Test User\",\n  \"password\": \"testpass\",\n  \"role\": \"patient\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/v1/auth/signup",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "signup"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Signin (Local)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test1@example.com\",\n  \"password\": \"testpass\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/v1/auth/signin",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "signin"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Google OAuth Redirect",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3000/api/v1/auth/google?role=doctor",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "google"
+          ],
+          "query": [
+            {
+              "key": "role",
+              "value": "doctor"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Doctors",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/doctors",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "v1",
+            "doctors"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Search Doctor by Name",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3000/api/v1/doctors?name=raj",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "v1",
+            "doctors"
+          ],
+          "query": [
+            {
+              "key": "name",
+              "value": "raj"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "View Doctor by ID",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3000/api/v1/doctors/{{doctorId}}",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "v1",
+            "doctors",
+            "{{doctorId}}"
+          ]
+        }
+      }
+    }
+  ]
+}
