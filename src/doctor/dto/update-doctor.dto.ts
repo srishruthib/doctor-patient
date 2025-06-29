@@ -1,9 +1,9 @@
 // src/doctor/dto/update-doctor.dto.ts
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateDoctorDto } from './create-doctor.dto';
+import { CreateDoctorDto } from './create-doctor.dto'; // Correct relative path
 import { IsOptional, IsString, IsEmail, MinLength, MaxLength, IsNumber, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Role } from '../../auth/dto/auth-signup.dto'; // Ensure Role enum is imported
+import { Role } from '../../auth/dto/auth-signup.dto'; // Correct relative path to Role enum
 
 // Extends CreateDoctorDto but makes all properties optional for updates
 export class UpdateDoctorDto extends PartialType(CreateDoctorDto) {

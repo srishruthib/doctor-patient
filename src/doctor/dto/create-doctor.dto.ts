@@ -1,7 +1,7 @@
 // src/doctor/dto/create-doctor.dto.ts
-import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, IsOptional, IsNumber, IsArray, IsEnum } from 'class-validator'; // <-- ADD IsEnum HERE
+import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, IsOptional, IsNumber, IsArray, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Role } from '../../auth/dto/auth-signup.dto';
+import { Role } from '../../auth/dto/auth-signup.dto'; // Correct relative path to Role enum
 
 export class CreateDoctorDto {
     @IsString()
@@ -22,7 +22,7 @@ export class CreateDoctorDto {
     @MaxLength(50)
     password: string;
 
-    @IsEnum(Role) // This is where IsEnum is used
+    @IsEnum(Role)
     @IsNotEmpty()
     role: Role; // Should be 'doctor' for doctor creation
 
@@ -36,7 +36,7 @@ export class CreateDoctorDto {
 
     @IsOptional()
     @IsNumber()
-    @Type(() => Number)
+    @Type(() => Number) // Ensure it's transformed to a number
     experience_years?: number;
 
     @IsOptional()
