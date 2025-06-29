@@ -1,462 +1,344 @@
 // src/auth/auth.service.ts
 import {
-    ConflictException,
+    BadRequestException,
+    ForbiddenException,
     Injectable,
     UnauthorizedException,
-    BadRequestException,
-    InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
-
 import { Doctor } from '../entities/Doctor';
 import { Patient } from '../entities/Patient';
-import { RefreshToken } from '../entities/RefreshToken'; // Ensure this is the updated entity
-import { AuthSignupDto } from './dto/auth-signup.dto';
-import { AuthSigninDto } from './dto/auth-signin.dto';
+import { AuthSignupDto, AuthSignInDto, Role } from './dto/auth-signup.dto';
+import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { RefreshToken } from '../entities/RefreshToken';
+import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
+    private googleClient: OAuth2Client;
+
     constructor(
         @InjectRepository(Doctor)
-        private readonly doctorRepository: Repository<Doctor>,
+        private doctorRepository: Repository<Doctor>,
         @InjectRepository(Patient)
-        private readonly patientRepository: Repository<Patient>,
+        private patientRepository: Repository<Patient>,
         @InjectRepository(RefreshToken)
-        private readonly refreshTokenRepository: Repository<RefreshToken>,
-        private readonly jwtService: JwtService,
-        private readonly configService: ConfigService,
-    ) { }
+        private refreshTokenRepository: Repository<RefreshToken>,
+        private jwtService: JwtService,
+        private configService: ConfigService,
+    ) {
+        const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+        const googleClientSecret = this.configService.get<string>('GOOGLE_CLIENT_SECRET');
 
-    private parseJwtExpiryToMs(expiry: string): number {
-        const value = parseInt(expiry);
-        const unit = expiry.replace(value.toString(), '');
-
-        switch (unit) {
-            case 's': return value * 1000;
-            case 'm': return value * 60 * 1000;
-            case 'h': return value * 60 * 60 * 1000;
-            case 'd': return value * 24 * 60 * 60 * 1000;
-            default: return value * 60 * 60 * 1000;
+        if (googleClientId && googleClientSecret) {
+            this.googleClient = new OAuth2Client(
+                googleClientId,
+                googleClientSecret,
+            );
+        } else {
+            console.warn('Google Client ID or Secret not provided. Google OAuth will not function.');
         }
     }
 
-    public async generateTokens(userId: number, email: string, role: string) {
-        const payload = { sub: userId, email, role };
-
-        const accessToken = this.jwtService.sign(payload, {
-            secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
-            expiresIn: this.configService.get<string>('ACCESS_TOKEN_EXPIRY') || '1h',
-        });
-
-        const refreshTokenId = uuidv4();
-        const rawRefreshToken = this.jwtService.sign(
-            { ...payload, jti: refreshTokenId },
-            {
-                secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-                expiresIn: this.configService.get<string>('REFRESH_TOKEN_EXPIRY') || '7d',
-            },
-        );
-
-        const hashedRefreshToken = await bcrypt.hash(rawRefreshToken, 10);
-        const refreshTokenExpiry = new Date(
-            Date.now() +
-            this.parseJwtExpiryToMs(
-                this.configService.get<string>('REFRESH_TOKEN_EXPIRY') || '7d',
-            ),
-        );
-
-        // No need to fetch doctor/patient explicitly for refresh token saving anymore
-        const newRefreshToken = this.refreshTokenRepository.create({
-            id: refreshTokenId,
-            token: hashedRefreshToken,
-            expiresAt: refreshTokenExpiry,
-            revoked: false,
-            user_id: userId, // Use new user_id column
-            user_role: role, // Use new user_role column
-        });
-
-        await this.refreshTokenRepository.save(newRefreshToken);
-
-        return {
-            accessToken,
-            refreshToken: rawRefreshToken,
-            role,
-        };
+    // Helper to hash passwords
+    private async hashData(data: string): Promise<string> {
+        return bcrypt.hash(data, 10);
     }
 
+    // Helper to generate access and refresh tokens
+    async generateTokens(
+        userId: number,
+        email: string,
+        role: Role,
+    ): Promise<{ accessToken: string; refreshToken: string }> {
+        const payload = { sub: userId, email, role };
+        const [accessToken, refreshToken] = await Promise.all([
+            this.jwtService.signAsync(payload, {
+                secret: this.configService.get<string>('JWT_SECRET'),
+                expiresIn: this.configService.get<string>('JWT_EXPIRES_IN'), // e.g., '1h'
+            }),
+            this.jwtService.signAsync(payload, {
+                secret: this.configService.get<string>('REFRESH_TOKEN_SECRET'),
+                expiresIn: this.configService.get<string>('REFRESH_TOKEN_EXPIRES_IN'), // e.g., '7d'
+            }),
+        ]);
+        return { accessToken, refreshToken };
+    }
+
+    // Helper to update or create refresh token in DB
+    async updateRefreshToken(userId: number, refreshToken: string, role: Role): Promise<void> {
+        const hashedRefreshToken = await this.hashData(refreshToken);
+        const existingToken = await this.refreshTokenRepository.findOne({ where: { user_id: userId } });
+
+        if (existingToken) {
+            existingToken.token = hashedRefreshToken;
+            existingToken.revoked = false;
+            await this.refreshTokenRepository.save(existingToken);
+        } else {
+            await this.refreshTokenRepository.save({
+                user_id: userId,
+                token: hashedRefreshToken,
+                role: role,
+            });
+        }
+    }
+
+    // Helper to revoke a refresh token
+    async revokeRefreshToken(userId: number): Promise<void> {
+        const token = await this.refreshTokenRepository.findOne({ where: { user_id: userId } });
+        if (token) {
+            token.revoked = true;
+            await this.refreshTokenRepository.save(token);
+        }
+    }
+
+    /**
+     * Signup for a new user (Doctor or Patient).
+     * @param dto AuthSignupDto
+     * @returns Access token, refresh token, and user details
+     */
     async signup(dto: AuthSignupDto) {
         const { email, password, role } = dto;
 
-        const existingDoctor = await this.doctorRepository.findOne({ where: { email } });
-        const existingPatient = await this.patientRepository.findOne({ where: { email } });
-
-        if (existingDoctor || existingPatient) {
-            throw new ConflictException('Email already registered');
+        let existingUser: Doctor | Patient | null;
+        if (role === Role.DOCTOR) {
+            existingUser = await this.doctorRepository.findOne({ where: { email } });
+        } else {
+            existingUser = await this.patientRepository.findOne({ where: { email } });
         }
 
-        let hashedPassword: string | null = null;
-        if (password) {
-            hashedPassword = await bcrypt.hash(password, 10);
+        if (existingUser) {
+            throw new BadRequestException('User with this email already exists');
         }
 
-        if (role === 'doctor') {
+        const hashedPassword = await this.hashData(password);
+
+        if (role === Role.DOCTOR) {
             const doctor = this.doctorRepository.create({
                 ...dto,
+                email,
                 password: hashedPassword,
-                googleId: null,
                 provider: 'local',
-                available_days: dto.available_days || [],
-                available_time_slots: dto.available_time_slots || []
+                googleId: undefined,
             } as Partial<Doctor>);
-            const savedDoctor = await this.doctorRepository.save(doctor);
-            const tokens = await this.generateTokens(savedDoctor.doctor_id, savedDoctor.email, 'doctor');
-            return {
-                message: 'Doctor registered successfully',
-                role: 'doctor',
-                user: { id: savedDoctor.doctor_id, email: savedDoctor.email, first_name: savedDoctor.first_name, role: 'doctor' },
-                accessToken: tokens.accessToken,
-                refreshToken: tokens.refreshToken,
-            };
-        }
 
-        if (role === 'patient') {
+            const savedDoctor = await this.doctorRepository.save(doctor);
+            const tokens = await this.generateTokens(savedDoctor.id, savedDoctor.email, Role.DOCTOR);
+            await this.updateRefreshToken(savedDoctor.id, tokens.refreshToken, Role.DOCTOR);
+
+            return {
+                accessToken: tokens.accessToken,
+                user: { id: savedDoctor.id, email: savedDoctor.email, first_name: savedDoctor.first_name, role: Role.DOCTOR },
+            };
+        } else {
             const patient = this.patientRepository.create({
                 ...dto,
+                email,
                 password: hashedPassword,
-                googleId: null,
                 provider: 'local',
+                googleId: undefined,
             } as Partial<Patient>);
+
             const savedPatient = await this.patientRepository.save(patient);
-            const tokens = await this.generateTokens(savedPatient.patient_id, savedPatient.email, 'patient');
+            const tokens = await this.generateTokens(savedPatient.id, savedPatient.email, Role.PATIENT);
+            await this.updateRefreshToken(savedPatient.id, tokens.refreshToken, Role.PATIENT);
+
             return {
-                message: 'Patient registered successfully',
-                role: 'patient',
-                user: { id: savedPatient.patient_id, email: savedPatient.email, first_name: savedPatient.first_name, role: 'patient' },
                 accessToken: tokens.accessToken,
-                refreshToken: tokens.refreshToken,
+                user: { id: savedPatient.id, email: savedPatient.email, first_name: savedPatient.first_name, role: Role.PATIENT },
             };
         }
-
-        throw new BadRequestException('Invalid role');
     }
 
-    async signin(dto: AuthSigninDto) {
+    /**
+     * Sign in an existing user (Doctor or Patient).
+     * @param dto AuthSignInDto
+     * @returns Access token, refresh token, and user details
+     */
+    async signIn(dto: AuthSignInDto) {
         const { email, password } = dto;
 
-        const doctor = await this.doctorRepository.findOne({ where: { email } });
-        const patient = await this.patientRepository.findOne({ where: { email } });
+        let user: Doctor | Patient | null;
+        user = await this.doctorRepository.findOne({ where: { email } });
 
-        if (doctor && doctor.provider === 'google') {
-            throw new BadRequestException('Account is registered via Google. Please login with Google.');
-        }
-        if (patient && patient.provider === 'google') {
-            throw new BadRequestException('Account is registered via Google. Please login with Google.');
+        if (!user) {
+            user = await this.patientRepository.findOne({ where: { email } });
         }
 
-        if (!doctor && !patient) {
+        if (!user || !user.password) {
             throw new UnauthorizedException('Invalid credentials');
         }
 
-        const user: Doctor | Patient = doctor || patient!;
-        const role = user.role;
-
-        if (user.password === null) {
-            throw new BadRequestException('Account is registered via Google. Please login with Google.');
-        }
-
         const isPasswordValid = await bcrypt.compare(password, user.password);
+
         if (!isPasswordValid) {
             throw new UnauthorizedException('Invalid credentials');
         }
 
-        // We no longer update previous refresh tokens by relations, but by userId and userRole directly
-        await this.refreshTokenRepository.update(
-            { user_id: user.role === 'doctor' ? (user as Doctor).doctor_id : (user as Patient).patient_id, revoked: false },
-            { revoked: true }
-        );
-
-        const userId = user.role === 'doctor' ? (user as Doctor).doctor_id : (user as Patient).patient_id;
-        const tokens = await this.generateTokens(userId, user.email, role);
-
-        const userIdentifier = role === 'doctor' ? 'doctor_id' : 'patient_id';
+        const userId = user.role === 'doctor' ? (user as Doctor).id : (user as Patient).id;
+        const tokens = await this.generateTokens(userId, user.email, user.role as Role);
+        await this.updateRefreshToken(userId, tokens.refreshToken, user.role as Role);
 
         return {
-            message: 'Signin successful',
-            role,
-            user: { id: user[userIdentifier], email: user.email, role },
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
+            user: { id: userId, email: user.email, first_name: user.first_name, role: user.role },
         };
     }
 
-    async signout(refreshToken: string) {
-        if (!refreshToken) {
-            throw new BadRequestException('Refresh token is required');
-        }
-
-        try {
-            const decoded: any = this.jwtService.verify(refreshToken, {
-                secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-            });
-
-            // Fetch token using its ID, no relations needed now
-            const tokenInDb = await this.refreshTokenRepository.findOne({
-                where: { id: decoded.jti, revoked: false },
-                // relations: ['doctor', 'patient'], // REMOVED
-            });
-
-            if (!tokenInDb) {
-                throw new UnauthorizedException('Token not found or already revoked');
-            }
-
-            // Check if token belongs to the authenticated user using new user_id and user_role
-            if (tokenInDb.user_id !== decoded.sub || tokenInDb.user_role !== decoded.role) {
-                throw new UnauthorizedException('Token does not belong to the authenticated user.');
-            }
-
-            const isTokenValid = await bcrypt.compare(refreshToken, tokenInDb.token);
-            if (!isTokenValid) {
-                tokenInDb.revoked = true;
-                await this.refreshTokenRepository.save(tokenInDb);
-                throw new UnauthorizedException('Invalid token');
-            }
-
-            tokenInDb.revoked = true;
-            await this.refreshTokenRepository.save(tokenInDb);
-
-            return { message: 'Signed out successfully' };
-        } catch (error: any) {
-            if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
-                throw error;
-            }
-            if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
-                throw new UnauthorizedException('Invalid or expired token.');
-            }
-            throw new InternalServerErrorException('An unexpected error occurred during signout.');
-        }
+    /**
+     * Logs out a user by revoking their refresh token.
+     * @param userId The ID of the user logging out.
+     */
+    async logout(userId: number) {
+        await this.revokeRefreshToken(userId);
     }
 
-    async refresh(refreshToken: string) {
-        if (!refreshToken) {
-            throw new BadRequestException('Refresh token is required');
+    /**
+     * Refreshes access and refresh tokens using an existing refresh token.
+     * @param refreshToken The expired refresh token.
+     * @returns New access token, new refresh token, and user details.
+     */
+    async refreshTokens(oldRefreshToken: string) {
+        const tokenInDb = await this.refreshTokenRepository.findOne({ where: { token: oldRefreshToken, revoked: false } });
+
+        if (!tokenInDb) {
+            throw new ForbiddenException('Invalid or revoked refresh token');
         }
 
-        try {
-            const decoded: any = this.jwtService.verify(refreshToken, {
-                secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-            });
-
-            // Fetch token using its ID, no relations needed now
-            const tokenInDb = await this.refreshTokenRepository.findOne({
-                where: { id: decoded.jti, revoked: false },
-                // relations: ['doctor', 'patient'], // REMOVED
-            });
-
-            if (!tokenInDb || tokenInDb.expiresAt < new Date()) {
-                throw new UnauthorizedException('Invalid or expired refresh token');
-            }
-
-            // Check if token belongs to the authenticated user using new user_id and user_role
-            if (tokenInDb.user_id !== decoded.sub || tokenInDb.user_role !== decoded.role) {
-                throw new UnauthorizedException('Token does not belong to the authenticated user or user not found.');
-            }
-
-            // Fetch the user (Doctor/Patient) based on userId and userRole stored in the refresh token
-            let userFromDb: Doctor | Patient | null = null;
-            if (tokenInDb.user_role === 'doctor') {
-                userFromDb = await this.doctorRepository.findOne({ where: { doctor_id: tokenInDb.user_id } });
-            } else if (tokenInDb.user_role === 'patient') {
-                userFromDb = await this.patientRepository.findOne({ where: { patient_id: tokenInDb.user_id } });
-            }
-
-            if (!userFromDb) {
-                throw new UnauthorizedException('User associated with token not found.');
-            }
-
-            const isTokenValid = await bcrypt.compare(refreshToken, tokenInDb.token);
-            if (!isTokenValid) {
-                tokenInDb.revoked = true;
-                await this.refreshTokenRepository.save(tokenInDb);
-                throw new UnauthorizedException('Invalid token');
-            }
-
-            tokenInDb.revoked = true;
-            await this.refreshTokenRepository.save(tokenInDb);
-
-            const newTokens = await this.generateTokens(
-                userFromDb.role === 'doctor' ? (userFromDb as Doctor).doctor_id : (userFromDb as Patient).patient_id,
-                userFromDb.email,
-                userFromDb.role
-            );
-
-            return {
-                message: 'New access token issued',
-                accessToken: newTokens.accessToken,
-                refreshToken: newTokens.refreshToken,
-                role: newTokens.role,
-            };
-        } catch (error: any) {
-            console.error('AuthService Refresh Error:', error.message);
-            console.error('AuthService Refresh Error Stack:', error.stack);
-            if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
-                throw error;
-            }
-            if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
-                throw new UnauthorizedException('Invalid or expired token.');
-            }
-            throw new InternalServerErrorException('An unexpected error occurred during token refresh.');
+        let userFromDb: Doctor | Patient | null;
+        if (tokenInDb.role === Role.DOCTOR) {
+            userFromDb = await this.doctorRepository.findOne({ where: { id: tokenInDb.user_id } });
+        } else if (tokenInDb.role === Role.PATIENT) {
+            userFromDb = await this.patientRepository.findOne({ where: { id: tokenInDb.user_id } });
+        } else {
+            throw new ForbiddenException('Invalid role in refresh token');
         }
+
+        if (!userFromDb) {
+            throw new ForbiddenException('User associated with refresh token not found');
+        }
+
+        const newTokens = await this.generateTokens(
+            userFromDb.role === 'doctor' ? (userFromDb as Doctor).id : (userFromDb as Patient).id,
+            userFromDb.email,
+            userFromDb.role as Role,
+        );
+
+        await this.updateRefreshToken(
+            userFromDb.role === 'doctor' ? (userFromDb as Doctor).id : (userFromDb as Patient).id,
+            newTokens.refreshToken,
+            userFromDb.role as Role,
+        );
+
+        return { accessToken: newTokens.accessToken, newRefreshToken: newTokens.refreshToken, user: userFromDb };
     }
 
-    // --- Google OAuth Specific Methods ---
+    /**
+     * Handles Google OAuth authentication flow.
+     * @param user Google profile data.
+     * @returns JWT tokens and user details.
+     */
+    async handleGoogleAuth(user: any): Promise<{ accessToken: string; refreshToken: string; user: Doctor | Patient }> {
+        const { email, firstName, lastName, googleId, role } = user;
 
-    // Find a user by email or Google ID
-    async findDoctorByEmailOrGoogleId(email: string, googleId: string): Promise<Doctor | null> {
-        try {
-            console.log(`AuthService: Finding doctor by email (${email}) or googleId (${googleId})...`);
-            const doctor = await this.doctorRepository.findOne({
-                where: [{ email: email }, { googleId: googleId }],
-            });
-            console.log('AuthService: Doctor found:', doctor);
-            return doctor;
-        } catch (error: any) {
-            console.error('AuthService Find Doctor Error:', error.message);
-            console.error('AuthService Find Doctor Error Stack:', error.stack);
-            throw error;
+        let existingUser: Doctor | Patient | null;
+        if (role === Role.DOCTOR) {
+            existingUser = await this.doctorRepository.findOne({ where: { email } });
+        } else if (role === Role.PATIENT) {
+            existingUser = await this.patientRepository.findOne({ where: { email } });
+        } else {
+            throw new BadRequestException('Google authentication failed: Invalid role.');
         }
+
+        if (existingUser) {
+            if (!existingUser.googleId) {
+                if (role === Role.DOCTOR) {
+                    await this.updateDoctorGoogleId(existingUser.id, googleId);
+                } else if (role === Role.PATIENT) {
+                    await this.updatePatientGoogleId(existingUser.id, googleId);
+                }
+            }
+            const tokens = await this.generateTokens(existingUser.id, existingUser.email, existingUser.role as Role);
+            await this.updateRefreshToken(existingUser.id, tokens.refreshToken, existingUser.role as Role);
+            return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, user: existingUser };
+        } else {
+            const hashedPassword = await this.hashData(Math.random().toString(36).slice(-8));
+
+            if (role === Role.DOCTOR) {
+                const doctor = this.doctorRepository.create({
+                    email,
+                    first_name: firstName || null,
+                    last_name: lastName || null,
+                    password: hashedPassword,
+                    googleId,
+                    provider: 'google',
+                    role: Role.DOCTOR,
+                    phone_number: null,
+                    specialization: null,
+                    experience_years: null,
+                    education: null,
+                    clinic_name: null,
+                    clinic_address: null,
+                } as Partial<Doctor>);
+                const savedDoctor = await this.doctorRepository.save(doctor);
+                const tokens = await this.generateTokens(savedDoctor.id, savedDoctor.email, Role.DOCTOR);
+                await this.updateRefreshToken(savedDoctor.id, tokens.refreshToken, Role.DOCTOR);
+                return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, user: savedDoctor };
+            } else if (role === Role.PATIENT) {
+                const patient = this.patientRepository.create({
+                    email,
+                    first_name: firstName || null,
+                    last_name: lastName || null,
+                    password: hashedPassword,
+                    googleId,
+                    provider: 'google',
+                    role: Role.PATIENT,
+                    phone_number: null,
+                    address: null,
+                } as Partial<Patient>);
+                const savedPatient = await this.patientRepository.save(patient);
+                const tokens = await this.generateTokens(savedPatient.id, savedPatient.email, Role.PATIENT);
+                await this.updateRefreshToken(savedPatient.id, tokens.refreshToken, Role.PATIENT);
+                return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, user: savedPatient };
+            }
+        }
+        throw new BadRequestException('Google authentication failed: Role not specified or unknown.');
     }
 
-    async findPatientByEmailOrGoogleId(email: string, googleId: string): Promise<Patient | null> {
-        try {
-            console.log(`AuthService: Finding patient by email (${email}) or googleId (${googleId})...`);
-            const patient = await this.patientRepository.findOne({
-                where: [{ email: email }, { googleId: googleId }],
-            });
-            console.log('AuthService: Patient found:', patient);
-            return patient;
-        } catch (error: any) {
-            console.error('AuthService Find Patient Error:', error.message);
-            console.error('AuthService Find Patient Error Stack:', error.stack);
-            throw error;
+    /**
+     * Validates a user by ID and role. Used by JwtStrategy.
+     * @param userId The ID of the user.
+     * @param role The role of the user ('doctor' or 'patient').
+     * @returns The Doctor or Patient object if found, otherwise null.
+     */
+    async validateUserByIdAndRole(userId: number, role: Role): Promise<Doctor | Patient | null> {
+        if (role === Role.DOCTOR) {
+            return this.doctorRepository.findOne({ where: { id: userId } });
+        } else if (role === Role.PATIENT) {
+            return this.patientRepository.findOne({ where: { id: userId } });
         }
+        return null; // Invalid role
     }
 
-    // Create a new doctor linked to Google OAuth
-    async createDoctorWithGoogle(
-        email: string,
-        firstName: string,
-        lastName: string,
-        googleId: string,
-        role: 'doctor',
-    ): Promise<Doctor> {
-        try {
-            console.log(`AuthService: Creating new doctor with Google: ${email}`);
-            const doctor = new Doctor();
-            doctor.first_name = firstName || null;
-            doctor.last_name = lastName || null;
-            doctor.email = email;
+    // Update Google ID for Doctor
+    async updateDoctorGoogleId(doctorId: number, googleId: string) {
+        const doctor = await this.doctorRepository.findOne({ where: { id: doctorId } });
+        if (doctor) {
             doctor.googleId = googleId;
-            doctor.provider = 'google';
-            doctor.role = role;
-            doctor.password = null;
-            doctor.phone_number = null;
-            doctor.specialization = null;
-            doctor.experience_years = null;
-            doctor.education = null;
-            doctor.clinic_name = null;
-            doctor.clinic_address = null;
-            doctor.available_days = [];
-            doctor.available_time_slots = [];
-            console.log('AuthService: Doctor object prepared for save:', doctor);
-            const savedDoctor = await this.doctorRepository.save(doctor);
-            console.log('AuthService: Doctor saved:', savedDoctor);
-            return savedDoctor;
-        } catch (error: any) {
-            console.error('AuthService Create Doctor with Google Error:', error.message);
-            console.error('AuthService Create Doctor with Google Error Stack:', error.stack);
-            throw error;
+            await this.doctorRepository.save(doctor);
         }
     }
 
-    // Create a new patient linked to Google OAuth
-    async createPatientWithGoogle(
-        email: string,
-        firstName: string,
-        lastName: string,
-        googleId: string,
-        role: 'patient',
-    ): Promise<Patient> {
-        try {
-            console.log(`AuthService: Creating new patient with Google: ${email}`);
-            const patient = new Patient();
-            patient.first_name = firstName || null;
-            patient.last_name = lastName || null;
-            patient.email = email;
+    // Update Google ID for Patient
+    async updatePatientGoogleId(patientId: number, googleId: string) {
+        const patient = await this.patientRepository.findOne({ where: { id: patientId } });
+        if (patient) {
             patient.googleId = googleId;
-            patient.provider = 'google';
-            patient.role = role;
-            patient.password = null;
-            patient.phone_number = null;
-            patient.address = null;
-            console.log('AuthService: Patient object prepared for save:', patient);
-            const savedPatient = await this.patientRepository.save(patient);
-            console.log('AuthService: Patient saved:', savedPatient);
-            return savedPatient;
-        } catch (error: any) {
-            console.error('AuthService Create Patient with Google Error:', error.message);
-            console.error('AuthService Create Patient with Google Error Stack:', error.stack);
-            throw error;
-        }
-    }
-
-    // Update googleId for an existing local doctor account
-    async updateDoctorGoogleId(doctorId: number, googleId: string): Promise<void> {
-        try {
-            console.log(`AuthService: Updating Doctor ${doctorId} with GoogleId: ${googleId}`);
-            await this.doctorRepository.update(doctorId, { googleId, provider: 'google' });
-            console.log('AuthService: Doctor GoogleId update complete.');
-        } catch (error: any) {
-            console.error('AuthService Update Doctor GoogleId Error:', error.message);
-            console.error('AuthService Update Doctor GoogleId Error Stack:', error.stack);
-            throw error;
-        }
-    }
-
-    // Update googleId for an existing local patient account
-    async updatePatientGoogleId(patientId: number, googleId: string): Promise<void> {
-        try {
-            console.log(`AuthService: Updating Patient ${patientId} with GoogleId: ${googleId}`);
-            await this.patientRepository.update(patientId, { googleId, provider: 'google' });
-            console.log('AuthService: Patient GoogleId update complete.');
-        } catch (error: any) {
-            console.error('AuthService Update Patient GoogleId Error:', error.message);
-            console.error('AuthService Update Patient GoogleId Error Stack:', error.stack);
-            throw error;
-        }
-    }
-
-    async validateUserByIdAndRole(userId: number, role: string): Promise<Doctor | Patient | null> {
-        try {
-            if (role === 'doctor') {
-                const user = await this.doctorRepository.findOne({ where: { doctor_id: userId } });
-                console.log('AuthService: Validated Doctor by ID and role:', user);
-                return user;
-            } else if (role === 'patient') {
-                const user = await this.patientRepository.findOne({ where: { patient_id: userId } });
-                console.log('AuthService: Validated Patient by ID and role:', user);
-                return user;
-            }
-            console.log('AuthService: Validation failed - invalid role or user not found.');
-            return null;
-        } catch (error: any) {
-            console.error('AuthService Validate User by ID and Role Error:', error.message);
-            console.error('AuthService Validate User by ID and Role Error Stack:', error.stack);
-            throw error;
+            await this.patientRepository.save(patient);
         }
     }
 }

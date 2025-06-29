@@ -1,32 +1,30 @@
 // src/entities/DoctorAvailability.ts
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Doctor } from './Doctor'; // <--- Make sure this import is correct
+import { Doctor } from './Doctor';
 
 @Entity('doctor_availabilities')
 export class DoctorAvailability {
     @PrimaryGeneratedColumn()
     id: number;
 
-    // This is the foreign key column that links to the Doctor entity's primary key (id)
     @Column()
-    doctor_id: number;
+    doctor_id: number; // Foreign key column
 
-    // Many availabilities belong to one doctor
-    @ManyToOne(() => Doctor, doctor => doctor.availabilities) // <--- ADD OR UPDATE THIS BLOCK
-    @JoinColumn({ name: 'doctor_id' }) // This specifies which column is the foreign key
-    doctor: Doctor; // <--- This is the property that was missing/causing the error
+    @ManyToOne(() => Doctor, doctor => doctor.availabilities)
+    @JoinColumn({ name: 'doctor_id' }) // Specifies the foreign key column
+    doctor: Doctor;
 
     @Column({ type: 'date' })
-    date: string;
+    date: string; // ISO-MM-DD
 
     @Column({ type: 'time' })
-    start_time: string;
+    start_time: string; // HH:MM:SS
 
     @Column({ type: 'time' })
-    end_time: string;
+    end_time: string; // HH:MM:SS
 
     @Column({ type: 'jsonb', nullable: true })
-    weekdays: string[]; // ['Monday', 'Tuesday']
+    weekdays: string[]; // e.g., ['Monday', 'Tuesday']
 
     @Column()
     session: string; // 'morning', 'afternoon', 'evening'

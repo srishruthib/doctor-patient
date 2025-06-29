@@ -1,8 +1,8 @@
 // src/entities/Doctor.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { Appointment } from './Appointment'; // Import Appointment
-import { DoctorAvailability } from './DoctorAvailability'; // Import DoctorAvailability
-import { DoctorTimeSlot } from './DoctorTimeSlot'; // Import DoctorTimeSlot
+import { Appointment } from './Appointment';
+import { DoctorAvailability } from './DoctorAvailability';
+import { DoctorTimeSlot } from './DoctorTimeSlot';
 
 @Entity('doctors')
 export class Doctor {
@@ -19,44 +19,43 @@ export class Doctor {
     email: string;
 
     @Column({ nullable: true })
-    password?: string; // Optional for Google OAuth users
+    password?: string;
 
     @Column({ nullable: true })
-    googleId?: string; // For Google OAuth
+    googleId?: string;
 
     @Column({ default: 'local' })
-    provider: string; // 'local' or 'google'
+    provider: string;
 
     @Column({ default: 'doctor' })
-    role: string; // 'doctor' or 'patient'
+    role: string;
 
     @Column({ nullable: true })
-    phone_number: string;
+    phone_number: string | null;
 
     @Column({ nullable: true })
-    specialization: string;
+    specialization: string | null;
 
     @Column({ nullable: true })
-    experience_years: number;
+    experience_years: number | null;
 
     @Column({ nullable: true })
-    education: string;
+    education: string | null;
 
     @Column({ nullable: true })
-    clinic_name: string;
+    clinic_name: string | null;
 
     @Column({ nullable: true })
-    clinic_address: string;
+    clinic_address: string | null;
 
-    // Add OneToMany relationships here
     @OneToMany(() => DoctorAvailability, availability => availability.doctor)
-    availabilities: DoctorAvailability[]; // Added for doctor's availabilities
+    availabilities: DoctorAvailability[];
 
     @OneToMany(() => DoctorTimeSlot, timeSlot => timeSlot.doctor)
-    timeSlots: DoctorTimeSlot[]; // <--- ADD THIS LINE FOR TIME SLOTS
+    timeSlots: DoctorTimeSlot[];
 
     @OneToMany(() => Appointment, appointment => appointment.doctor)
-    appointments: Appointment[]; // <--- ADD THIS LINE FOR APPOINTMENTS
+    appointments: Appointment[];
 
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     created_at: Date;

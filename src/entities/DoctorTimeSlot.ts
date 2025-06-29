@@ -1,7 +1,7 @@
 // src/entities/DoctorTimeSlot.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm'; // Make sure OneToMany is imported
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Doctor } from './Doctor';
-import { Appointment } from './Appointment'; // <--- NEW: Import Appointment entity
+import { Appointment } from './Appointment';
 
 @Entity('doctor_time_slots')
 export class DoctorTimeSlot {
@@ -16,20 +16,19 @@ export class DoctorTimeSlot {
     doctor: Doctor;
 
     @Column({ type: 'date' })
-    date: string; // ISO-MM-DD
+    date: string;
 
     @Column({ type: 'time' })
-    start_time: string; // HH:MM:SS
+    start_time: string;
 
     @Column({ type: 'time' })
-    end_time: string; // HH:MM:SS
+    end_time: string;
 
     @Column({ default: true })
     is_available: boolean;
 
-    // Add OneToMany relationship to Appointment
-    @OneToMany(() => Appointment, appointment => appointment.slot) // <--- ADD THIS LINE FOR APPOINTMENTS
-    appointments: Appointment[]; // <--- ADD THIS LINE FOR APPOINTMENTS
+    @OneToMany(() => Appointment, appointment => appointment.slot)
+    appointments: Appointment[];
 
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     created_at: Date;

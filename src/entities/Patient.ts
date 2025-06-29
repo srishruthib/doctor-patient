@@ -1,42 +1,41 @@
 // src/entities/Patient.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { Appointment } from './Appointment'; // Import Appointment
+import { Appointment } from './Appointment';
 
 @Entity('patients')
 export class Patient {
     @PrimaryGeneratedColumn()
-    id: number;
+    id: number; // Primary key is 'id'
 
     @Column()
-    first_name: string;
+    first_name: string | null; // Changed to allow null
 
     @Column()
-    last_name: string;
+    last_name: string | null; // Changed to allow null
 
     @Column({ unique: true })
     email: string;
 
     @Column({ nullable: true })
-    password?: string; // Optional for Google OAuth users
+    password?: string;
 
     @Column({ nullable: true })
-    googleId?: string; // For Google OAuth
+    googleId?: string;
 
     @Column({ default: 'local' })
-    provider: string; // 'local' or 'google'
+    provider: string;
 
     @Column({ default: 'patient' })
-    role: string; // 'doctor' or 'patient'
+    role: string;
 
     @Column({ nullable: true })
-    phone_number: string;
+    phone_number: string | null; // Changed to allow null
 
     @Column({ nullable: true })
-    address: string;
+    address: string | null; // Changed to allow null
 
-    // Add OneToMany relationship here
     @OneToMany(() => Appointment, appointment => appointment.patient)
-    appointments: Appointment[]; // <--- ADD THIS LINE FOR APPOINTMENTS
+    appointments: Appointment[];
 
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     created_at: Date;
