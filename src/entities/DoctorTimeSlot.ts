@@ -1,40 +1,36 @@
 // src/entities/DoctorTimeSlot.ts
-import {
-    Entity,
-    PrimaryGeneratedColumn,
-    Column,
-    CreateDateColumn,
-    UpdateDateColumn,
-    Unique,
-} from 'typeorm';
-// NO import for Doctor needed here, as we are not using TypeORM's ManyToOne relation
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Doctor } from './Doctor'; // <--- Make sure this import is correct
 
-@Entity('doctor_time_slot') // Table name in the database
-// Add a unique constraint to prevent duplicate slots for the same doctor, date, and start_time
-// We will enforce this manually in the service layer if database unique constraint causes issues.
-@Unique(['doctor_id', 'date', 'start_time'])
+@Entity('doctor_time_slots')
 export class DoctorTimeSlot {
     @PrimaryGeneratedColumn()
     slot_id: number;
 
-    @Column({ type: 'int' }) // Simple column for doctor_id, no TypeORM ManyToOne relationship here
+    // This is the foreign key column that links to the Doctor entity's primary key (id)
+    @Column()
     doctor_id: number;
 
-    @Column({ type: 'date' }) // The specific date of this time slot (e.g., '2025-06-27')
-    date: string; // Stored as 'YYYY-MM-DD' string
+    // Many time slots belong to one doctor
+    @ManyToOne(() => Doctor, doctor => doctor.timeSlots) // <--- ADD OR UPDATE THIS BLOCK
+    @JoinColumn({ name: 'doctor_id' }) // This specifies which column is the foreign key
+    doctor: Doctor; // <--- This is the property that was missing/causing the error
 
-    @Column({ type: 'time' }) // Start time of the individual slot (e.g., '09:00:00')
-    start_time: string; // Stored as 'HH:MM:SS' string
+    @Column({ type: 'date' })
+    date: string; // YYYY-MM-DD
 
-    @Column({ type: 'time' }) // End time of the individual slot (e.g., '09:15:00')
-    end_time: string; // Stored as 'HH:MM:SS' string
+    @Column({ type: 'time' })
+    start_time: string; // HH:MM:SS
 
-    @Column({ default: true }) // Indicates if the slot is available (true) or booked (false)
+    @Column({ type: 'time' })
+    end_time: string; // HH:MM:SS
+
+    @Column({ default: true })
     is_available: boolean;
 
-    @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     created_at: Date;
 
-    @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
     updated_at: Date;
 }

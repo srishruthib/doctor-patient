@@ -1,78 +1,66 @@
 // src/entities/Doctor.ts
-import {
-    Entity,
-    PrimaryGeneratedColumn,
-    Column,
-    // Removed OneToMany import
-    CreateDateColumn,
-    UpdateDateColumn,
-} from 'typeorm';
-// Removed RefreshToken import
-// Removed StringArrayTransformer and SessionType imports as they are not defined in this stable revert version
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Appointment } from './Appointment'; // Import Appointment
+import { DoctorAvailability } from './DoctorAvailability'; // Import DoctorAvailability
+import { DoctorTimeSlot } from './DoctorTimeSlot'; // Import DoctorTimeSlot
 
-@Entity('doctor')
+@Entity('doctors')
 export class Doctor {
     @PrimaryGeneratedColumn()
-    doctor_id: number;
+    id: number;
 
-    @Column({ type: 'varchar', length: 100, nullable: true })
-    first_name: string | null;
+    @Column()
+    first_name: string;
 
-    @Column({ type: 'varchar', length: 100, nullable: true })
-    last_name: string | null;
+    @Column()
+    last_name: string;
 
-    @Column({ type: 'varchar', unique: true })
+    @Column({ unique: true })
     email: string;
 
-    @Column({ type: 'varchar', nullable: true })
-    password: string | null;
+    @Column({ nullable: true })
+    password?: string; // Optional for Google OAuth users
 
-    @Column({ type: 'varchar', nullable: true })
-    googleId: string | null;
+    @Column({ nullable: true })
+    googleId?: string; // For Google OAuth
 
-    @Column({ type: 'varchar', default: 'local' })
-    provider: string;
+    @Column({ default: 'local' })
+    provider: string; // 'local' or 'google'
 
-    @Column({ type: 'varchar', length: 20, default: 'doctor' })
-    role: string;
+    @Column({ default: 'doctor' })
+    role: string; // 'doctor' or 'patient'
 
-    @Column({ type: 'varchar', length: 20, nullable: true })
-    phone_number: string | null;
+    @Column({ nullable: true })
+    phone_number: string;
 
-    @Column({ type: 'varchar', length: 100, nullable: true })
-    specialization: string | null;
+    @Column({ nullable: true })
+    specialization: string;
 
-    @Column({ type: 'int', nullable: true })
-    experience_years: number | null;
+    @Column({ nullable: true })
+    experience_years: number;
 
-    @Column({ type: 'text', nullable: true })
-    education: string | null;
+    @Column({ nullable: true })
+    education: string;
 
-    @Column({ type: 'varchar', length: 255, nullable: true })
-    clinic_name: string | null;
+    @Column({ nullable: true })
+    clinic_name: string;
 
-    @Column({ type: 'varchar', length: 255, nullable: true })
-    clinic_address: string | null;
+    @Column({ nullable: true })
+    clinic_address: string;
 
-    // Assuming these columns were working correctly with a global or removed transformer
-    @Column({
-        type: 'varchar',
-        nullable: true,
-    })
-    available_days: string[] | null;
+    // Add OneToMany relationships here
+    @OneToMany(() => DoctorAvailability, availability => availability.doctor)
+    availabilities: DoctorAvailability[]; // Added for doctor's availabilities
 
-    @Column({
-        type: 'varchar',
-        nullable: true,
-    })
-    available_time_slots: string[] | null;
+    @OneToMany(() => DoctorTimeSlot, timeSlot => timeSlot.doctor)
+    timeSlots: DoctorTimeSlot[]; // <--- ADD THIS LINE FOR TIME SLOTS
 
-    @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+    @OneToMany(() => Appointment, appointment => appointment.doctor)
+    appointments: Appointment[]; // <--- ADD THIS LINE FOR APPOINTMENTS
+
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     created_at: Date;
 
-    @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
     updated_at: Date;
-
-    // Removed relationship to RefreshToken
-    // refreshTokens: RefreshToken[];
 }

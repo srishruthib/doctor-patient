@@ -1,52 +1,46 @@
 // src/entities/Patient.ts
-import {
-    Entity,
-    PrimaryGeneratedColumn,
-    Column,
-    // Removed OneToMany import
-    CreateDateColumn,
-    UpdateDateColumn,
-} from 'typeorm';
-// Removed RefreshToken import
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Appointment } from './Appointment'; // Import Appointment
 
-@Entity('patient')
+@Entity('patients')
 export class Patient {
     @PrimaryGeneratedColumn()
-    patient_id: number;
+    id: number;
 
-    @Column({ type: 'varchar', length: 100, nullable: true })
-    first_name: string | null;
+    @Column()
+    first_name: string;
 
-    @Column({ type: 'varchar', length: 100, nullable: true })
-    last_name: string | null;
+    @Column()
+    last_name: string;
 
-    @Column({ type: 'varchar', unique: true })
+    @Column({ unique: true })
     email: string;
 
-    @Column({ type: 'varchar', nullable: true })
-    password: string | null;
+    @Column({ nullable: true })
+    password?: string; // Optional for Google OAuth users
 
-    @Column({ type: 'varchar', nullable: true })
-    googleId: string | null;
+    @Column({ nullable: true })
+    googleId?: string; // For Google OAuth
 
-    @Column({ type: 'varchar', default: 'local' })
-    provider: string;
+    @Column({ default: 'local' })
+    provider: string; // 'local' or 'google'
 
-    @Column({ type: 'varchar', length: 20, default: 'patient' })
-    role: string;
+    @Column({ default: 'patient' })
+    role: string; // 'doctor' or 'patient'
 
-    @Column({ type: 'varchar', length: 20, nullable: true })
-    phone_number: string | null;
+    @Column({ nullable: true })
+    phone_number: string;
 
-    @Column({ type: 'varchar', length: 255, nullable: true })
-    address: string | null;
+    @Column({ nullable: true })
+    address: string;
 
-    @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+    // Add OneToMany relationship here
+    @OneToMany(() => Appointment, appointment => appointment.patient)
+    appointments: Appointment[]; // <--- ADD THIS LINE FOR APPOINTMENTS
+
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     created_at: Date;
 
-    @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
     updated_at: Date;
-
-    // Removed relationship to RefreshToken
-    // refreshTokens: RefreshToken[];
 }
