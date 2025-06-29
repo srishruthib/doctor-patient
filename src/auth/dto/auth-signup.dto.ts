@@ -5,6 +5,7 @@ import { Type } from 'class-transformer';
 export enum Role {
     DOCTOR = 'doctor',
     PATIENT = 'patient',
+    ADMIN = 'admin', // FIX: Added ADMIN role
 }
 
 // Re-using common properties for signup and signin
@@ -66,6 +67,5 @@ export class AuthSignupDto extends AuthBaseDto {
     address?: string;
 }
 
-// DTO for user signin (login) - THIS WAS THE MISSING/INCORRECTLY DEFINED PART
+// DTO for user signin (login)
 export class AuthSignInDto extends AuthBaseDto { }
-

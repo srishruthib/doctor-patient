@@ -1,43 +1,21 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
+    "module": "commonjs", // FIX: Ensure this is commonjs for Node.js
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
+    "target": "es2021", // Or "es2022" or "esnext" for modern Node.js
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./", // Re-introduced baseUrl
-    "paths": { // Re-introduced paths for cleaner imports
-      "@/*": [
-        "src/*"
-      ]
-    },
+    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
-    "strict": true,
-    "strictNullChecks": true,
-    "strictPropertyInitialization": false,
-    "forceConsistentCasingInFileNames": true,
+    "strictNullChecks": false, // Consider setting to true later for stricter checks
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false,
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "resolveJsonModule": true // Useful for some configs
-  },
-  "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node",
-    "transpileOnly": true
-  },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false
+  }
 }

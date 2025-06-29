@@ -56,13 +56,15 @@ export class AuthService {
     ): Promise<{ accessToken: string; refreshToken: string }> {
         const payload = { sub: userId, email, role };
         const [accessToken, refreshToken] = await Promise.all([
+            // FIX: Use JWT_ACCESS_SECRET and ACCESS_TOKEN_EXPIRY from .env
             this.jwtService.signAsync(payload, {
-                secret: this.configService.get<string>('JWT_SECRET'),
-                expiresIn: this.configService.get<string>('JWT_EXPIRES_IN'), // e.g., '1h'
+                secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
+                expiresIn: this.configService.get<string>('ACCESS_TOKEN_EXPIRY'),
             }),
+            // FIX: Use JWT_REFRESH_SECRET and REFRESH_TOKEN_EXPIRY from .env
             this.jwtService.signAsync(payload, {
-                secret: this.configService.get<string>('REFRESH_TOKEN_SECRET'),
-                expiresIn: this.configService.get<string>('REFRESH_TOKEN_EXPIRES_IN'), // e.g., '7d'
+                secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+                expiresIn: this.configService.get<string>('REFRESH_TOKEN_EXPIRY'),
             }),
         ]);
         return { accessToken, refreshToken };
@@ -253,6 +255,7 @@ export class AuthService {
         } else {
             throw new BadRequestException('Google authentication failed: Invalid role.');
         }
+
 
         if (existingUser) {
             if (!existingUser.googleId) {

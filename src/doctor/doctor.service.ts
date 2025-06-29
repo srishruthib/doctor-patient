@@ -6,9 +6,9 @@ import { Doctor } from '../entities/Doctor';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { DoctorAvailability } from '../entities/DoctorAvailability';
-import { CreateDoctorAvailabilityDto } from './dto/create-doctor-availability.dto';
+import { CreateDoctorAvailabilityDto } from './dto/create-doctor-availability.dto'; // FIX: Corrected import path (relative to src/doctor)
 import { DoctorTimeSlot } from '../entities/DoctorTimeSlot';
-import * as dayjs from 'dayjs'; // Import dayjs for date/time operations
+import dayjs from 'dayjs';
 
 @Injectable()
 export class DoctorService {
@@ -25,8 +25,6 @@ export class DoctorService {
         const doctor = this.doctorRepository.create(createDoctorDto);
         return this.doctorRepository.save(doctor);
     }
-
-    // --- BEGIN MISSING METHODS FOR CONTROLLER ---
 
     async findAllDoctors(name?: string, specialization?: string): Promise<Doctor[]> {
         const queryBuilder = this.doctorRepository.createQueryBuilder('doctor');
@@ -50,7 +48,7 @@ export class DoctorService {
     async findDoctorById(id: number): Promise<Doctor> {
         const doctor = await this.doctorRepository.findOne({ where: { id } });
         if (!doctor) {
-            throw new NotFoundException(`Doctor with ID ${id} not found`);
+            throw new NotFoundException(`Doctor with ID ${id} not醐not found`);
         }
         return doctor;
     }
@@ -167,5 +165,4 @@ export class DoctorService {
             last_page,
         };
     }
-    // --- END MISSING METHODS FOR CONTROLLER ---
 }
