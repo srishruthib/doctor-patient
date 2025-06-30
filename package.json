@@ -9,7 +9,11 @@
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
+<<<<<<< HEAD
     "@nestjs/config": "^3.3.0",
+=======
+    "@nestjs/config": "^3.0.0",
+>>>>>>> upstream/Implement-backend-APIs-for-listing-doctors
     "@nestjs/core": "^10.0.0",
     "@nestjs/jwt": "^10.0.0",
     "@nestjs/passport": "^10.0.0",

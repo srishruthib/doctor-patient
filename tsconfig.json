@@ -6,12 +6,26 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
+<<<<<<< HEAD
     "target": "es2017",
+=======
+    "target": "ES2023",
+>>>>>>> upstream/Implement-backend-APIs-for-listing-doctors
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
+<<<<<<< HEAD
     "skipLibCheck": true
   },
   "exclude": ["node_modules", "dist"]
+=======
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "noFallthroughCasesInSwitch": false
+  }
+>>>>>>> upstream/Implement-backend-APIs-for-listing-doctors
 }
