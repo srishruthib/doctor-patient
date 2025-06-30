@@ -50,7 +50,6 @@ export class DoctorController {
         return this.doctorService.findDoctorById(+id);
     }
 
-    // ====> NEW ENDPOINT FOR DOCTOR PROFILE <====
     /**
      * @route GET /doctors/profile
      * @description Retrieves the profile of the authenticated doctor.
@@ -61,9 +60,16 @@ export class DoctorController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.DOCTOR)
     async getProfile(@Req() req: any) {
-        // The user object is attached to the request by JwtAuthGuard
-        // req.user.sub contains the user ID, req.user.role contains the role
-        const doctorId = req.user.sub;
+        // ====> CRITICAL FIX: Ensure doctorId is a number <====
+        // req.user.sub contains the user ID (as a string from JWT payload)
+        // We need to parse it to an integer before passing to the service.
+        const doctorId = parseInt(req.user?.sub, 10); // Use parseInt with radix 10 for safety
+
+        // Add a check to ensure the ID is a valid number
+        if (isNaN(doctorId) || !doctorId) { // Check for NaN or 0 (if 0 is not a valid ID in your DB)
+            throw new BadRequestException('Invalid Doctor ID in token payload.');
+        }
+
         const doctorProfile = await this.doctorService.getDoctorProfile(doctorId);
         return doctorProfile;
     }
