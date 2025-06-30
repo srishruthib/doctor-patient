@@ -12,15 +12,17 @@ import {
     HttpCode,
     HttpStatus,
     BadRequestException,
+    Req, // Make sure Req is imported
 } from '@nestjs/common';
 import { DoctorService } from './doctor.service';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
-import { CreateDoctorAvailabilityDto } from './dto/create-doctor-availability.dto'; // FIX: Relative path within the 'doctor' module
+import { CreateDoctorAvailabilityDto } from './dto/create-doctor-availability.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/dto/auth-signup.dto';
+import { Doctor } from '../entities/Doctor'; // Make sure Doctor entity is imported
 
 @Controller('doctors')
 export class DoctorController {
@@ -28,24 +30,42 @@ export class DoctorController {
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
-    // @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.ADMIN)
+    // @UseGuards(JwtAuthGuard, RolesGuard) // Uncomment if you want to restrict creation to ADMIN
+    @Roles(Role.ADMIN) // This decorator will only apply if UseGuards is uncommented
     create(@Body() createDoctorDto: CreateDoctorDto) {
         return this.doctorService.create(createDoctorDto);
     }
 
     @Get()
     @HttpCode(HttpStatus.OK)
-    // @UseGuards(JwtAuthGuard)
+    // @UseGuards(JwtAuthGuard) // Uncomment if you want to restrict viewing all doctors
     findAll(@Query('name') name?: string, @Query('specialization') specialization?: string) {
         return this.doctorService.findAllDoctors(name, specialization);
     }
 
     @Get(':id')
     @HttpCode(HttpStatus.OK)
-    // @UseGuards(JwtAuthGuard)
+    // @UseGuards(JwtAuthGuard) // Uncomment if you want to restrict viewing single doctor by ID
     findOne(@Param('id') id: string) {
         return this.doctorService.findDoctorById(+id);
+    }
+
+    // ====> NEW ENDPOINT FOR DOCTOR PROFILE <====
+    /**
+     * @route GET /doctors/profile
+     * @description Retrieves the profile of the authenticated doctor.
+     * @access Doctor (login required)
+     */
+    @Get('profile')
+    @HttpCode(HttpStatus.OK)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.DOCTOR)
+    async getProfile(@Req() req: any) {
+        // The user object is attached to the request by JwtAuthGuard
+        // req.user.sub contains the user ID, req.user.role contains the role
+        const doctorId = req.user.sub;
+        const doctorProfile = await this.doctorService.getDoctorProfile(doctorId);
+        return doctorProfile;
     }
 
     @Put(':id')
@@ -77,7 +97,7 @@ export class DoctorController {
 
     @Get(':id/availability/slots')
     @HttpCode(HttpStatus.OK)
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard) // This endpoint is accessible to any logged-in user (doctor or patient)
     getAvailableTimeSlots(
         @Param('id') id: string,
         @Query('date') date: string,

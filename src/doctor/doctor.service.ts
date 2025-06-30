@@ -6,7 +6,7 @@ import { Doctor } from '../entities/Doctor';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { DoctorAvailability } from '../entities/DoctorAvailability';
-import { CreateDoctorAvailabilityDto } from './dto/create-doctor-availability.dto'; // FIX: Corrected import path (relative to src/doctor)
+import { CreateDoctorAvailabilityDto } from './dto/create-doctor-availability.dto';
 import { DoctorTimeSlot } from '../entities/DoctorTimeSlot';
 import dayjs from 'dayjs';
 
@@ -48,9 +48,27 @@ export class DoctorService {
     async findDoctorById(id: number): Promise<Doctor> {
         const doctor = await this.doctorRepository.findOne({ where: { id } });
         if (!doctor) {
-            throw new NotFoundException(`Doctor with ID ${id} not醐not found`);
+            throw new NotFoundException(`Doctor with ID ${id} not found`);
         }
         return doctor;
+    }
+
+    // ====> NEW METHOD FOR DOCTOR PROFILE <====
+    /**
+     * Retrieves a doctor's profile by their ID.
+     * Used for the /doctors/profile endpoint.
+     * @param doctorId The ID of the doctor.
+     * @returns The doctor profile.
+     * @throws NotFoundException if the doctor is not found.
+     */
+    async getDoctorProfile(doctorId: number): Promise<Doctor> {
+        const doctor = await this.doctorRepository.findOne({ where: { id: doctorId } });
+        if (!doctor) {
+            throw new NotFoundException(`Doctor with ID ${doctorId} not found.`);
+        }
+        // Exclude sensitive information like password before returning
+        const { password, ...result } = doctor;
+        return result as Doctor;
     }
 
     async update(id: number, updateDoctorDto: UpdateDoctorDto): Promise<Doctor> {
