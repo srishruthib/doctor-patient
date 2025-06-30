@@ -34,7 +34,7 @@ import { Appointment } from './entities/Appointment'; // Ensure Appointment enti
         // FIX: Use DB_NAME from .env
         database: configService.get<string>('DB_NAME'),
         entities: [Doctor, Patient, RefreshToken, DoctorAvailability, DoctorTimeSlot, Appointment], // List all your entities here
-        synchronize: configService.get<string>('NODE_ENV') !== 'production', // Set to false in production
+        synchronize: true, // Set to false in production
         logging: true, // Enable logging for debugging SQL queries
       }),
     }),
