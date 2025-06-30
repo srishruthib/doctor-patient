@@ -201,42 +201,75 @@ export class AuthService {
 
     /**
      * Refreshes access and refresh tokens using an existing refresh token.
-     * @param refreshToken The expired refresh token.
+     * @param oldRefreshToken The expired refresh token.
      * @returns New access token, new refresh token, and user details.
      */
     async refreshTokens(oldRefreshToken: string) {
-        const tokenInDb = await this.refreshTokenRepository.findOne({ where: { token: oldRefreshToken, revoked: false } });
-
-        if (!tokenInDb) {
-            throw new ForbiddenException('Invalid or revoked refresh token');
+        // 1. Verify and decode the old refresh token to get user info (sub, email, role)
+        let decodedToken: any;
+        try {
+            decodedToken = this.jwtService.verify(oldRefreshToken, {
+                secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+            });
+        } catch (error) {
+            // If the token is invalid or expired (JWT verification fails)
+            throw new ForbiddenException('Invalid or expired refresh token');
         }
 
+        const userId = decodedToken.sub;
+        const userRole = decodedToken.role;
+
+        // 2. Find the refresh token in the database for this specific user
+        // We look up by user_id, as the 'token' field is hashed.
+        const tokenInDb = await this.refreshTokenRepository.findOne({
+            where: { user_id: userId, revoked: false, role: userRole },
+        });
+
+        if (!tokenInDb) {
+            // If no token found or it's revoked
+            throw new ForbiddenException('Refresh token not found or revoked for this user');
+        }
+
+        // 3. Compare the provided raw refresh token with the hashed one in the database
+        const isMatch = await bcrypt.compare(oldRefreshToken, tokenInDb.token);
+        if (!isMatch) {
+            // If the raw token doesn't match the hashed one, it's invalid
+            throw new ForbiddenException('Invalid refresh token credentials');
+        }
+
+        // 4. Find the actual user (Doctor or Patient)
         let userFromDb: Doctor | Patient | null;
-        if (tokenInDb.role === Role.DOCTOR) {
-            userFromDb = await this.doctorRepository.findOne({ where: { id: tokenInDb.user_id } });
-        } else if (tokenInDb.role === Role.PATIENT) {
-            userFromDb = await this.patientRepository.findOne({ where: { id: tokenInDb.user_id } });
+        if (userRole === Role.DOCTOR) {
+            userFromDb = await this.doctorRepository.findOne({ where: { id: userId } });
+        } else if (userRole === Role.PATIENT) {
+            userFromDb = await this.patientRepository.findOne({ where: { id: userId } });
         } else {
-            throw new ForbiddenException('Invalid role in refresh token');
+            throw new ForbiddenException('Invalid role in refresh token payload');
         }
 
         if (!userFromDb) {
             throw new ForbiddenException('User associated with refresh token not found');
         }
 
+        // 5. Generate new access and refresh tokens
         const newTokens = await this.generateTokens(
-            userFromDb.role === 'doctor' ? (userFromDb as Doctor).id : (userFromDb as Patient).id,
+            userId,
             userFromDb.email,
-            userFromDb.role as Role,
+            userRole as Role,
         );
 
+        // 6. Update the refresh token in the database with the new hashed one
         await this.updateRefreshToken(
-            userFromDb.role === 'doctor' ? (userFromDb as Doctor).id : (userFromDb as Patient).id,
+            userId,
             newTokens.refreshToken,
-            userFromDb.role as Role,
+            userRole as Role,
         );
 
-        return { accessToken: newTokens.accessToken, newRefreshToken: newTokens.refreshToken, user: userFromDb };
+        return {
+            accessToken: newTokens.accessToken,
+            newRefreshToken: newTokens.refreshToken, // Renamed for clarity in response
+            user: { id: userFromDb.id, email: userFromDb.email, first_name: userFromDb.first_name, role: userFromDb.role },
+        };
     }
 
     /**
@@ -340,6 +373,7 @@ export class AuthService {
     async updatePatientGoogleId(patientId: number, googleId: string) {
         const patient = await this.patientRepository.findOne({ where: { id: patientId } });
         if (patient) {
+            patient.googleId = googleId;
             patient.googleId = googleId;
             await this.patientRepository.save(patient);
         }
