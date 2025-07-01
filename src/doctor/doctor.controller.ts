@@ -14,7 +14,8 @@ import {
     BadRequestException,
     Req, // Make sure Req is imported
 } from '@nestjs/common';
-import { DoctorService } from './doctor.service';
+// ====> CRITICAL FIX: CHANGE THIS LINE <====
+import { DoctorService } from './doctor.service'; // REVERTED from 'require' to 'from'
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { CreateDoctorAvailabilityDto } from './dto/create-doctor-availability.dto';
@@ -30,22 +31,22 @@ export class DoctorController {
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
-    // @UseGuards(JwtAuthGuard, RolesGuard) // Uncomment if you want to restrict creation to ADMIN
-    @Roles(Role.ADMIN) // This decorator will only apply if UseGuards is uncommented
+    // @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.ADMIN)
     create(@Body() createDoctorDto: CreateDoctorDto) {
         return this.doctorService.create(createDoctorDto);
     }
 
     @Get()
     @HttpCode(HttpStatus.OK)
-    // @UseGuards(JwtAuthGuard) // Uncomment if you want to restrict viewing all doctors
+    // @UseGuards(JwtAuthGuard)
     findAll(@Query('name') name?: string, @Query('specialization') specialization?: string) {
         return this.doctorService.findAllDoctors(name, specialization);
     }
 
     @Get(':id')
     @HttpCode(HttpStatus.OK)
-    // @UseGuards(JwtAuthGuard) // Uncomment if you want to restrict viewing single doctor by ID
+    // @UseGuards(JwtAuthGuard)
     findOne(@Param('id') id: string) {
         return this.doctorService.findDoctorById(+id);
     }
@@ -60,13 +61,9 @@ export class DoctorController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.DOCTOR)
     async getProfile(@Req() req: any) {
-        // ====> CRITICAL FIX: Ensure doctorId is a number <====
-        // req.user.sub contains the user ID (as a string from JWT payload)
-        // We need to parse it to an integer before passing to the service.
-        const doctorId = parseInt(req.user?.sub, 10); // Use parseInt with radix 10 for safety
+        const doctorId = parseInt(req.user?.sub, 10);
 
-        // Add a check to ensure the ID is a valid number
-        if (isNaN(doctorId) || !doctorId) { // Check for NaN or 0 (if 0 is not a valid ID in your DB)
+        if (isNaN(doctorId) || !doctorId) {
             throw new BadRequestException('Invalid Doctor ID in token payload.');
         }
 
@@ -103,7 +100,7 @@ export class DoctorController {
 
     @Get(':id/availability/slots')
     @HttpCode(HttpStatus.OK)
-    @UseGuards(JwtAuthGuard) // This endpoint is accessible to any logged-in user (doctor or patient)
+    @UseGuards(JwtAuthGuard)
     getAvailableTimeSlots(
         @Param('id') id: string,
         @Query('date') date: string,
