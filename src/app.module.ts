@@ -6,12 +6,12 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
-// Your existing modules
+// Your application's feature modules
 import { AuthModule } from './auth/auth.module';
-import { DoctorModule } from './doctor/doctor.module';
+import { DoctorsModule } from './doctors/doctors.module'; // Corrected to plural 'DoctorsModule'
 import { PatientModule } from './patient/patient.module';
 
-// Your existing entities (ensure all are listed)
+// Your entities
 import { Doctor } from './entities/Doctor';
 import { Patient } from './entities/Patient';
 import { RefreshToken } from './entities/RefreshToken';
@@ -21,14 +21,12 @@ import { Appointment } from './entities/Appointment';
 
 @Module({
   imports: [
-    // Your ConfigModule setup (global and envFilePath)
     ConfigModule.forRoot({
-      isGlobal: true, // Makes the ConfigModule available everywhere
-      envFilePath: '.env', // Path to your .env file
+      isGlobal: true,
+      envFilePath: '.env',
     }),
-    // Your TypeOrmModule.forRootAsync setup
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule], // Import Nest's ConfigModule here
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
@@ -37,20 +35,16 @@ import { Appointment } from './entities/Appointment';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
-        // List all your entities here from your project
         entities: [Doctor, Patient, RefreshToken, DoctorAvailability, DoctorTimeSlot, Appointment],
-        // Set synchronize based on NODE_ENV for safety in production
         synchronize: configService.get<string>('NODE_ENV') !== 'production',
-        logging: true, // Keep logging for debugging
+        logging: true,
       }),
     }),
-    // Your application's feature modules
     AuthModule,
-    DoctorModule,
+    DoctorsModule, // Use DoctorsModule (plural)
     PatientModule,
-    // Removed conflicting UsersModule and DoctorsModule from the other side of the merge
   ],
-  controllers: [], // Keep empty if no root controllers
-  providers: [],   // Keep empty if no root providers
+  controllers: [],
+  providers: [],
 })
 export class AppModule { }

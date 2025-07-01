@@ -1,13 +1,18 @@
-
+// src/doctors/doctors.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Doctor } from './doctor.entity';
 import { DoctorsController } from './doctors.controller';
-import { DoctorsService } from './doctors.service';
+import { DoctorService } from './doctors.service'; // Ensure this is correct
+import { Doctor } from '../entities/Doctor'; // Corrected import path for Doctor entity
+import { DoctorAvailability } from '../entities/DoctorAvailability';
+import { DoctorTimeSlot } from '../entities/DoctorTimeSlot';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Doctor])],
+  imports: [
+    TypeOrmModule.forFeature([Doctor, DoctorAvailability, DoctorTimeSlot]),
+  ],
   controllers: [DoctorsController],
-  providers: [DoctorsService],
+  providers: [DoctorService],
+  exports: [DoctorService], // Export DoctorService if other modules need to use it
 })
-export class DoctorsModule {}
+export class DoctorsModule { }

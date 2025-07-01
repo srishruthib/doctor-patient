@@ -10,7 +10,6 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const config_1 = require("@nestjs/config");
-const config_module_1 = require("./config/config.module");
 const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const doctors_module_1 = require("./doctors/doctors.module");
@@ -22,20 +21,12 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            config_module_1.ConfigModule,
-            typeorm_1.TypeOrmModule.forRootAsync({
-                imports: [config_module_1.ConfigModule],
-                inject: [config_1.ConfigService],
-                useFactory: async (configService) => ({
-                    type: 'postgres',
-                    host: configService.get('DB_HOST'),
-                    port: configService.get('DB_PORT'),
-                    username: configService.get('DB_USERNAME'),
-                    password: configService.get('DB_PASSWORD'),
-                    database: configService.get('DB_NAME'),
-                    entities: [user_entity_1.User, doctor_entity_1.Doctor],
-                    synchronize: true,
-                }),
+            config_1.ConfigModule.forRoot({ isGlobal: true }),
+            typeorm_1.TypeOrmModule.forRoot({
+                type: 'sqlite',
+                database: 'db.sqlite',
+                entities: [user_entity_1.User, doctor_entity_1.Doctor],
+                synchronize: true,
             }),
             auth_module_1.AuthModule,
             users_module_1.UsersModule,

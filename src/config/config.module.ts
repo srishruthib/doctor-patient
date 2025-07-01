@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { Module } from '@nestjs/common';
-=======
-// Configuration module for env variablesimport { Module } from '@nestjs/common';
->>>>>>> upstream/Implement-backend-APIs-for-listing-doctors
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import configuration from './configuration';
 
@@ -14,4 +10,4 @@ import configuration from './configuration';
     }),
   ],
 })
-export class ConfigModule {}
+export class ConfigModule { }

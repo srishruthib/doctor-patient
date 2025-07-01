@@ -1,53 +1,160 @@
-<<<<<<< HEAD
+// src/doctors/doctors.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
-import { Doctor } from './doctor.entity';
+import { Repository, Like } from 'typeorm';
+import { Doctor } from '../entities/Doctor'; // Corrected import path for Doctor entity
 import { CreateDoctorDto } from './dto/create-doctor.dto';
+import { UpdateDoctorDto } from './dto/update-doctor.dto';
+import { DoctorAvailability } from '../entities/DoctorAvailability';
+import { DoctorTimeSlot } from '../entities/DoctorTimeSlot';
 
 @Injectable()
-export class DoctorsService {
+export class DoctorService {
   constructor(
     @InjectRepository(Doctor)
-    private readonly doctorRepo: Repository<Doctor>,
-  ) {}
+    private doctorsRepository: Repository<Doctor>,
+    @InjectRepository(DoctorAvailability)
+    private doctorAvailabilityRepository: Repository<DoctorAvailability>,
+    @InjectRepository(DoctorTimeSlot)
+    private doctorTimeSlotRepository: Repository<DoctorTimeSlot>,
+  ) { }
 
-  async search(name?: string, specialization?: string) {
-    const where: any = {};
-    if (name) where.name = ILike(`%${name}%`);
-    if (specialization) where.specialization = ILike(`%${specialization}%`);
-    return this.doctorRepo.find({ where });
+  async create(createDoctorDto: CreateDoctorDto): Promise<Doctor> {
+    const doctor = this.doctorsRepository.create(createDoctorDto);
+    return this.doctorsRepository.save(doctor);
   }
 
-  async getById(id: string) {
-    const doctor = await this.doctorRepo.findOne({ where: { id } });
-    if (!doctor) throw new NotFoundException('Doctor not found');
+  async findAllDoctors(name?: string, specialization?: string): Promise<Doctor[]> {
+    const query: any = {};
+    if (name) {
+      query.first_name = Like(`%${name}%`);
+    }
+    if (specialization) {
+      query.specialization = Like(`%${specialization}%`);
+    }
+    return this.doctorsRepository.find({ where: query });
+  }
+
+  async findDoctorById(id: number): Promise<Doctor> {
+    const doctor = await this.doctorsRepository.findOne({ where: { id } });
+    if (!doctor) {
+      throw new NotFoundException(`Doctor with ID ${id} not found.`);
+    }
     return doctor;
   }
 
-  async create(dto: CreateDoctorDto) {
-    const doctor = this.doctorRepo.create(dto);
-    return this.doctorRepo.save(doctor);
-=======
-
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
-import { Doctor } from './doctor.entity';
-
-@Injectable()
-export class DoctorsService {
-  constructor(@InjectRepository(Doctor) private repo: Repository<Doctor>) {}
-
-  search(name?: string, specialization?: string) {
-    const where = {};
-    if (name) where['name'] = ILike(`%${name}%`);
-    if (specialization) where['specialization'] = ILike(`%${specialization}%`);
-    return this.repo.find({ where });
+  async getDoctorProfile(id: number): Promise<Doctor> {
+    const doctor = await this.doctorsRepository.findOne({ where: { id } });
+    if (!doctor) {
+      throw new NotFoundException(`Doctor with ID ${id} not found.`);
+    }
+    return doctor;
   }
 
-  getById(id: string) {
-    return this.repo.findOne({ where: { id } });
->>>>>>> upstream/Implement-backend-APIs-for-listing-doctors
+  async update(id: number, updateDoctorDto: UpdateDoctorDto): Promise<Doctor> {
+    const doctor = await this.findDoctorById(id);
+    Object.assign(doctor, updateDoctorDto);
+    return this.doctorsRepository.save(doctor);
+  }
+
+  async remove(id: number): Promise<void> {
+    const result = await this.doctorsRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Doctor with ID ${id} not found.`);
+    }
+  }
+
+  async setDoctorAvailability(
+    doctorId: number,
+    createAvailabilityDto: CreateDoctorAvailabilityDto,
+  ): Promise<DoctorAvailability> {
+    const doctor = await this.findDoctorById(doctorId);
+
+    const { date, startTime, endTime, breakTimeStart, breakTimeEnd } = createAvailabilityDto;
+
+    let availability = await this.doctorAvailabilityRepository.findOne({
+      where: { doctor: { id: doctorId }, date },
+    });
+
+    if (!availability) {
+      availability = this.doctorAvailabilityRepository.create({
+        doctor,
+        date,
+        startTime,
+        endTime,
+        breakTimeStart,
+        breakTimeEnd,
+      });
+    } else {
+      Object.assign(availability, { startTime, endTime, breakTimeStart, breakTimeEnd });
+    }
+
+    await this.doctorAvailabilityRepository.save(availability);
+
+    await this.generateTimeSlots(availability);
+
+    return availability;
+  }
+
+  private async generateTimeSlots(availability: DoctorAvailability): Promise<void> {
+    await this.doctorTimeSlotRepository.delete({ availability: { id: availability.id } });
+
+    const start = new Date(`${availability.date}T${availability.startTime}:00`);
+    const end = new Date(`${availability.date}T${availability.endTime}:00`);
+    const breakStart = availability.breakTimeStart ? new Date(`${availability.date}T${availability.breakTimeStart}:00`) : null;
+    const breakEnd = availability.breakTimeEnd ? new Date(`${availability.date}T${availability.breakTimeEnd}:00`) : null;
+
+    let currentTime = start;
+    const slots: DoctorTimeSlot[] = [];
+
+    while (currentTime < end) {
+      const slotEnd = new Date(currentTime.getTime() + 15 * 60 * 1000);
+
+      const isDuringBreak = breakStart && breakEnd &&
+        ((currentTime >= breakStart && currentTime < breakEnd) ||
+          (slotEnd > breakStart && slotEnd <= breakEnd) ||
+          (breakStart >= currentTime && breakStart < slotEnd));
+
+      if (!isDuringBreak) {
+        const slot = this.doctorTimeSlotRepository.create({
+          availability,
+          slotTime: currentTime.toTimeString().substring(0, 5),
+          isBooked: false,
+        });
+        slots.push(slot);
+      }
+      currentTime = slotEnd;
+    }
+    await this.doctorTimeSlotRepository.save(slots);
+  }
+
+  async getDoctorAvailableTimeSlots(
+    doctorId: number,
+    date: string,
+    page: number,
+    limit: number,
+  ): Promise<{ slots: DoctorTimeSlot[]; total: number; page: number; limit: number }> {
+    const availability = await this.doctorAvailabilityRepository.findOne({
+      where: { doctor: { id: doctorId }, date },
+      relations: ['timeSlots'],
+    });
+
+    if (!availability) {
+      return { slots: [], total: 0, page, limit };
+    }
+
+    const availableSlots = availability.timeSlots.filter(slot => !slot.isBooked);
+
+    const sortedSlots = availableSlots.sort((a, b) => a.slotTime.localeCompare(b.slotTime));
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedSlots = sortedSlots.slice(startIndex, endIndex);
+
+    return {
+      slots: paginatedSlots,
+      total: availableSlots.length,
+      page,
+      limit,
+    };
   }
 }
