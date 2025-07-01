@@ -29,11 +29,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     async validate(payload: any) {
+        // payload.sub is the userId, payload.role is the role from the JWT token
+        // We still validate the user exists in the database
         const user = await this.authService.validateUserByIdAndRole(payload.sub, payload.role as Role);
 
         if (!user) {
             throw new UnauthorizedException('User not found or invalid token');
         }
-        return user;
+
+        // ====> CRITICAL FIX: Return an object with 'sub' and 'role' (and any other necessary payload data) <====
+        // This ensures that req.user in your controllers will have req.user.sub and req.user.role
+        // The 'sub' property is typically used by Passport to store the user's ID.
+        return { sub: payload.sub, role: payload.role };
     }
 }
