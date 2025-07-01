@@ -1,21 +1,25 @@
 {
   "compilerOptions": {
-    "module": "commonjs", // FIX: Ensure this is commonjs for Node.js
+    "module": "commonjs",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "target": "es2021", // Or "es2022" or "esnext" for modern Node.js
+    "target": "es2021", // Keeping es2021 as the target for modern Node.js
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
-    "strictNullChecks": false, // Consider setting to true later for stricter checks
+    "strictNullChecks": false, // Keep as false for now, can be true later for stricter checks
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

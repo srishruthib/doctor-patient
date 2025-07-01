@@ -1,31 +1,31 @@
 // src/entities/RefreshToken.ts
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { Role } from '../auth/dto/auth-signup.dto'; // Import Role enum
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Doctor } from './Doctor'; // Assuming you have these entities
+import { Patient } from './Patient'; // Assuming you have these entities
 
-@Entity('refresh_tokens') // Assuming your table is named 'refresh_tokens'
+@Entity()
 export class RefreshToken {
     @PrimaryGeneratedColumn()
     id: number;
 
     @Column()
-    user_id: number; // The ID of the user (doctor or patient)
+    userId: number; // The ID of the user (Doctor or Patient)
 
     @Column()
     token: string; // Hashed refresh token
 
-    @Column({ default: false })
-    revoked: boolean;
+    @Column()
+    role: string; // 'DOCTOR' or 'PATIENT' (string representation of the Role enum)
 
-    @Column({
-        type: 'enum', // Define as enum type for PostgreSQL
-        enum: Role,   // Use the imported Role enum
-        nullable: false, // Role should always be present
-    })
-    role: Role; // <-- ADD THIS NEW PROPERTY: Stores 'doctor' or 'patient' role
+    @Column({ type: 'timestamp' }) // Added this line for expiresAt
+    expiresAt: Date;
 
-    @CreateDateColumn()
-    created_at: Date;
+    // Optional: Add relations if needed for TypeORM to manage them
+    // @ManyToOne(() => Doctor, doctor => doctor.refreshTokens, { nullable: true, onDelete: 'CASCADE' })
+    // @JoinColumn({ name: 'userId' }) // Link to the userId column
+    // doctor: Doctor;
 
-    @UpdateDateColumn()
-    updated_at: Date;
+    // @ManyToOne(() => Patient, patient => patient.refreshTokens, { nullable: true, onDelete: 'CASCADE' })
+    // @JoinColumn({ name: 'userId' }) // Link to the userId column
+    // patient: Patient;
 }

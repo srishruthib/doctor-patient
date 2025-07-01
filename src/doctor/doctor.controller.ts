@@ -22,7 +22,7 @@ import { CreateDoctorAvailabilityDto } from './dto/create-doctor-availability.dt
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../auth/dto/auth-signup.dto';
+// import { Role } from '../auth/dto/auth-signup.dto'; // No longer needed if using string literals directly for @Roles
 import { Doctor } from '../entities/Doctor'; // Make sure Doctor entity is imported
 
 @Controller('doctors')
@@ -31,22 +31,22 @@ export class DoctorController {
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
-    // @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.ADMIN)
+    // @UseGuards(JwtAuthGuard, RolesGuard) // Uncomment if you want to protect this endpoint
+    @Roles('ADMIN') // Use the string literal 'ADMIN'
     create(@Body() createDoctorDto: CreateDoctorDto) {
         return this.doctorService.create(createDoctorDto);
     }
 
     @Get()
     @HttpCode(HttpStatus.OK)
-    // @UseGuards(JwtAuthGuard)
+    // @UseGuards(JwtAuthGuard) // Uncomment if you want to protect this endpoint
     findAll(@Query('name') name?: string, @Query('specialization') specialization?: string) {
         return this.doctorService.findAllDoctors(name, specialization);
     }
 
     @Get(':id')
     @HttpCode(HttpStatus.OK)
-    // @UseGuards(JwtAuthGuard)
+    // @UseGuards(JwtAuthGuard) // Uncomment if you want to protect this endpoint
     findOne(@Param('id') id: string) {
         return this.doctorService.findDoctorById(+id);
     }
@@ -59,7 +59,7 @@ export class DoctorController {
     @Get('profile')
     @HttpCode(HttpStatus.OK)
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.DOCTOR)
+    @Roles('DOCTOR') // Use the string literal 'DOCTOR'
     async getProfile(@Req() req: any) {
         const doctorId = parseInt(req.user?.sub, 10);
 
@@ -74,7 +74,7 @@ export class DoctorController {
     @Put(':id')
     @HttpCode(HttpStatus.OK)
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.DOCTOR, Role.ADMIN)
+    @Roles('DOCTOR', 'ADMIN') // Use the string literals 'DOCTOR' and 'ADMIN'
     update(@Param('id') id: string, @Body() updateDoctorDto: UpdateDoctorDto) {
         return this.doctorService.update(+id, updateDoctorDto);
     }
@@ -82,7 +82,7 @@ export class DoctorController {
     @Delete(':id')
     @HttpCode(HttpStatus.NO_CONTENT)
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.ADMIN)
+    @Roles('ADMIN') // Use the string literal 'ADMIN'
     remove(@Param('id') id: string) {
         return this.doctorService.remove(+id);
     }
@@ -90,7 +90,7 @@ export class DoctorController {
     @Post(':id/availability')
     @HttpCode(HttpStatus.CREATED)
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.DOCTOR)
+    @Roles('DOCTOR') // Use the string literal 'DOCTOR'
     setAvailability(
         @Param('id') id: string,
         @Body() createAvailabilityDto: CreateDoctorAvailabilityDto,
@@ -100,7 +100,7 @@ export class DoctorController {
 
     @Get(':id/availability/slots')
     @HttpCode(HttpStatus.OK)
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard) // This endpoint might be accessible to patients, so only JwtAuthGuard might be enough
     getAvailableTimeSlots(
         @Param('id') id: string,
         @Query('date') date: string,

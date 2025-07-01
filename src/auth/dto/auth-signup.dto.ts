@@ -1,28 +1,22 @@
 // src/auth/dto/auth-signup.dto.ts
-import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, IsOptional, IsEnum, IsNumber, IsArray } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum, IsOptional } from 'class-validator';
 
+// Define the Role enum with uppercase string values as suggested by the error
 export enum Role {
-    DOCTOR = 'doctor',
-    PATIENT = 'patient',
-    ADMIN = 'admin', // FIX: Added ADMIN role
+    Doctor = 'DOCTOR',
+    Patient = 'PATIENT',
 }
 
-// Re-using common properties for signup and signin
-export class AuthBaseDto {
+export class AuthSignupDto {
     @IsEmail()
     @IsNotEmpty()
     email: string;
 
     @IsString()
     @IsNotEmpty()
-    @MinLength(8)
-    @MaxLength(50)
+    @MinLength(8, { message: 'Password must be at least 8 characters long' })
     password: string;
-}
 
-// DTO for user registration (signup)
-export class AuthSignupDto extends AuthBaseDto {
     @IsString()
     @IsNotEmpty()
     first_name: string;
@@ -31,41 +25,30 @@ export class AuthSignupDto extends AuthBaseDto {
     @IsNotEmpty()
     last_name: string;
 
-    @IsEnum(Role)
+    @IsEnum(Role, { message: 'Role must be either DOCTOR or PATIENT' })
     @IsNotEmpty()
     role: Role;
 
-    @IsOptional()
-    @IsString()
-    phone_number?: string;
-
-    // Doctor specific fields (optional for patients, required for doctors)
+    // Optional fields for Doctor
     @IsOptional()
     @IsString()
     specialization?: string;
 
     @IsOptional()
-    @IsNumber()
-    @Type(() => Number) // Ensure it's transformed to a number
-    experience_years?: number;
-
-    @IsOptional()
     @IsString()
-    education?: string;
+    phone_number?: string;
 
-    @IsOptional()
-    @IsString()
-    clinic_name?: string;
-
-    @IsOptional()
-    @IsString()
-    clinic_address?: string;
-
-    // Patient specific fields (optional for doctors, required for patients)
     @IsOptional()
     @IsString()
     address?: string;
 }
 
-// DTO for user signin (login)
-export class AuthSignInDto extends AuthBaseDto { }
+export class AuthSignInDto {
+    @IsEmail()
+    @IsNotEmpty()
+    email: string;
+
+    @IsString()
+    @IsNotEmpty()
+    password: string;
+}

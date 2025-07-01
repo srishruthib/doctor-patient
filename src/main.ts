@@ -5,14 +5,15 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config'; // Ensure ConfigService is imported
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Get ConfigService to access environment variables
   const configService = app.get(ConfigService);
-  const apiPrefix = configService.get<string>('API_PREFIX') || 'api/v1'; // Default to 'api/v1'
+  // Use API_PREFIX from .env, default to 'api/v1'
+  const apiPrefix = configService.get<string>('API_PREFIX') || 'api/v1';
 
   // Set global prefix for all API routes
   app.setGlobalPrefix(apiPrefix);
@@ -21,7 +22,7 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // Strips away properties that are not defined in the DTO
-      forbidNonWhitelisted: false, // Throws an error if non-whitelisted properties are sent
+      forbidNonWhitelisted: false, // Throws an error if non-whitelisted properties are sent (can be true for stricter validation)
       transform: true, // Automatically transforms payload objects to DTO instances
       disableErrorMessages: false, // Set to true in production for security
     }),
@@ -31,11 +32,13 @@ async function bootstrap() {
   app.enableCors({
     origin: '*', // For development, allow all origins. Restrict in production.
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
+    credentials: true, // Allow cookies to be sent with cross-origin requests
   });
 
-  const port = configService.get<number>('PORT') || 3000; // Default to 3000
+  // Get port from .env, default to 3000
+  const port = configService.get<number>('PORT') || 3000;
   await app.listen(port);
-  console.log(`Application is running on: http://[::1]:${port}`);
+  console.log(`Application is running on: http://localhost:${port}/${apiPrefix}`); // Updated log message
 }
+
 bootstrap();
