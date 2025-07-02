@@ -16,7 +16,7 @@ export const AppDataSource = new DataSource({
     port: parseInt(process.env.DB_PORT || '5432', 10),
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'password',
-    database: process.env.DB_NAME || 'hospital_app_db',
+    database: process.env.DB_NAME || 'hospital_db',
     entities: [Doctor, Patient, RefreshToken, DoctorAvailability, DoctorTimeSlot, Appointment],
     migrations: ['dist/migrations/*.js'],
     synchronize: true,
