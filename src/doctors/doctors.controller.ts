@@ -1,4 +1,3 @@
-// src/doctors/doctors.controller.ts
 import {
   Controller,
   Get,
@@ -7,14 +6,16 @@ import {
   Query,
   Param,
   UseGuards,
+  Req,
 } from '@nestjs/common';
-import { DoctorService } from './doctors.service'; // Corrected import: Changed DoctorsService to DoctorService
+import { Request } from 'express';
+import { DoctorService } from './doctors.service';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('doctors')
 export class DoctorsController {
-  constructor(private readonly doctorService: DoctorService) { } // Corrected usage: Changed doctorsService to doctorService
+  constructor(private readonly doctorService: DoctorService) { }
 
   // 🔍 Public search with query params
   @Get()
@@ -22,15 +23,13 @@ export class DoctorsController {
     @Query('name') name: string,
     @Query('specialization') specialization: string,
   ) {
-    // Assuming the service method is search, if not, adjust here
-    return this.doctorService.findAllDoctors(name, specialization); // Changed to match previous service method name
+    return this.doctorService.findAllDoctors(name, specialization);
   }
 
   // 📄 Get a doctor by ID
   @Get(':id')
   getDoctorById(@Param('id') id: string) {
-    // Assuming the service method is findDoctorById, if not, adjust here
-    return this.doctorService.findDoctorById(+id); // Changed to match previous service method name, converted id to number
+    return this.doctorService.findDoctorById(+id);
   }
 
   // ➕ Create doctor (Protected with JWT)
@@ -38,5 +37,12 @@ export class DoctorsController {
   @Post()
   createDoctor(@Body() dto: CreateDoctorDto) {
     return this.doctorService.create(dto);
+  }
+
+  // ✅ Get current doctor profile (Protected)
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  getDoctorProfile(@Req() req: Request) {
+    return req.user; // Returns user data from decoded JWT
   }
 }
