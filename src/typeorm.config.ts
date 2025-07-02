@@ -18,7 +18,7 @@ const config: TypeOrmModuleOptions = {
     password: process.env.DB_PASSWORD || 'password',
     database: process.env.DB_NAME || 'hospital_app_db',
     entities: [Doctor, Patient, RefreshToken, DoctorAvailability, DoctorTimeSlot, Appointment],
-    synchronize: process.env.NODE_ENV === 'development', // Keep true for development to auto-create tables
+    synchronize: true, // Keep true for development to auto-create tables
     logging: true,
     migrations: ['dist/migrations/*.js'],
 };
