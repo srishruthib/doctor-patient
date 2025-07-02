@@ -1,4 +1,4 @@
-// src/app.module.ts
+
 // IMPORTANT: 'reflect-metadata' MUST be imported first for TypeORM and NestJS decorators to work correctly.
 import 'reflect-metadata';
 
@@ -11,7 +11,7 @@ import { AuthModule } from './auth/auth.module';
 import { DoctorsModule } from './doctors/doctors.module';
 import { PatientModule } from './patient/patient.module';
 
-// Your entities (Corrected paths: ALL entities are imported from './entities/')
+// Your entities
 import { Doctor } from './entities/Doctor';
 import { Patient } from './entities/Patient';
 import { RefreshToken } from './entities/RefreshToken';
@@ -35,8 +35,15 @@ import { Appointment } from './entities/Appointment';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
-        entities: [Doctor, Patient, RefreshToken, DoctorAvailability, DoctorTimeSlot, Appointment],
-        synchronize: configService.get<string>('NODE_ENV') !== 'production',
+        entities: [
+          Doctor,
+          Patient,
+          RefreshToken,
+          DoctorAvailability,
+          DoctorTimeSlot,
+          Appointment,
+        ],
+        synchronize: true, // Disable this in production!
         logging: true,
       }),
     }),
@@ -44,7 +51,5 @@ import { Appointment } from './entities/Appointment';
     DoctorsModule,
     PatientModule,
   ],
-  controllers: [],
-  providers: [],
 })
 export class AppModule { }
