@@ -12,7 +12,7 @@ import { Patient } from '../entities/Patient';
 import { RefreshToken } from '../entities/RefreshToken';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
-import { JwtAuthGuard } from './guards/jwt-auth.guard'; // ADDED: Import JwtAuthGuard for export
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Module({
     imports: [
@@ -33,12 +33,13 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard'; // ADDED: Import JwtAuth
         AuthService,
         JwtStrategy,
         GoogleStrategy,
-        JwtAuthGuard, // JwtAuthGuard is a provider in this module
+        JwtAuthGuard,
     ],
+    // CRITICAL FIX: Export JwtModule so other modules can use JwtService
     exports: [
         AuthService,
-        JwtAuthGuard, // ADDED: Export JwtAuthGuard so other modules can use it
-        JwtModule // EXPORTED: JwtModule to ensure JwtService is available as a provider to other modules that import AuthModule
+        JwtAuthGuard,
+        JwtModule // <--- ADDED THIS LINE
     ],
 })
 export class AuthModule { }

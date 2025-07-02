@@ -2,17 +2,19 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DoctorsController } from './doctors.controller';
-import { DoctorService } from './doctors.service'; // Ensure this is correct
-import { Doctor } from '../entities/Doctor'; // Corrected import path for Doctor entity
+import { DoctorService } from './doctors.service';
+import { Doctor } from '../entities/Doctor';
 import { DoctorAvailability } from '../entities/DoctorAvailability';
 import { DoctorTimeSlot } from '../entities/DoctorTimeSlot';
+import { AuthModule } from '../auth/auth.module'; // <--- ADDED THIS IMPORT
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Doctor, DoctorAvailability, DoctorTimeSlot]),
+    AuthModule, // <--- ADDED THIS LINE
   ],
   controllers: [DoctorsController],
   providers: [DoctorService],
-  exports: [DoctorService], // Export DoctorService if other modules need to use it
+  exports: [DoctorService],
 })
 export class DoctorsModule { }

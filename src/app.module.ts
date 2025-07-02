@@ -11,7 +11,7 @@ import { AuthModule } from './auth/auth.module';
 import { DoctorsModule } from './doctors/doctors.module';
 import { PatientModule } from './patient/patient.module';
 
-// Your entities
+// Your entities (Corrected paths: ALL entities are imported from './entities/')
 import { Doctor } from './entities/Doctor';
 import { Patient } from './entities/Patient';
 import { RefreshToken } from './entities/RefreshToken';
@@ -31,7 +31,7 @@ import { Appointment } from './entities/Appointment';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
+        port: parseInt(configService.get<string>('DB_PORT'), 10),
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),

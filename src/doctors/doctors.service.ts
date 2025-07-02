@@ -2,12 +2,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
-import { Doctor } from '../entities/Doctor'; // Corrected import path for Doctor entity
+import { Doctor } from '../entities/Doctor';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { DoctorAvailability } from '../entities/DoctorAvailability';
 import { DoctorTimeSlot } from '../entities/DoctorTimeSlot';
-import { CreateDoctorAvailabilityDto } from './dto/create-doctor-availability.dto'; // <--- ADDED THIS IMPORT
+import { CreateDoctorAvailabilityDto } from './dto/create-doctor-availability.dto';
 
 @Injectable()
 export class DoctorService {
@@ -69,28 +69,25 @@ export class DoctorService {
     doctorId: number,
     createAvailabilityDto: CreateDoctorAvailabilityDto,
   ): Promise<DoctorAvailability> {
-    const doctor = await this.findDoctorById(doctorId); // Fetch the doctor entity
+    const doctor = await this.findDoctorById(doctorId);
 
     const { date, startTime, endTime, breakTimeStart, breakTimeEnd } = createAvailabilityDto;
 
     let availability = await this.doctorAvailabilityRepository.findOne({
-      where: { doctor: { id: doctorId }, date },
+      where: { doctorId: doctorId, date: date },
     });
 
     if (!availability) {
-      // Create new availability, linking to doctor via doctorId
       availability = this.doctorAvailabilityRepository.create({
-        doctorId: doctor.id, // Use the doctor's ID for the foreign key
+        doctorId: doctor.id,
         date,
         startTime,
         endTime,
         breakTimeStart,
         breakTimeEnd,
       });
-      // Assign the full doctor object for the relationship if needed later
       availability.doctor = doctor;
     } else {
-      // Update existing availability
       Object.assign(availability, { startTime, endTime, breakTimeStart, breakTimeEnd });
     }
 
@@ -102,7 +99,7 @@ export class DoctorService {
   }
 
   private async generateTimeSlots(availability: DoctorAvailability): Promise<void> {
-    await this.doctorTimeSlotRepository.delete({ availability: { id: availability.id } });
+    await this.doctorTimeSlotRepository.delete({ availabilityId: availability.id });
 
     const start = new Date(`${availability.date}T${availability.startTime}:00`);
     const end = new Date(`${availability.date}T${availability.endTime}:00`);
@@ -122,8 +119,8 @@ export class DoctorService {
 
       if (!isDuringBreak) {
         const slot = this.doctorTimeSlotRepository.create({
-          availability: availability, // Pass the DoctorAvailability entity
-          availabilityId: availability.id, // Also pass the ID for the foreign key column
+          availability: availability,
+          availabilityId: availability.id,
           slotTime: currentTime.toTimeString().substring(0, 5),
           isBooked: false,
         });
@@ -141,7 +138,7 @@ export class DoctorService {
     limit: number,
   ): Promise<{ slots: DoctorTimeSlot[]; total: number; page: number; limit: number }> {
     const availability = await this.doctorAvailabilityRepository.findOne({
-      where: { doctor: { id: doctorId }, date },
+      where: { doctorId: doctorId, date: date },
       relations: ['timeSlots'],
     });
 

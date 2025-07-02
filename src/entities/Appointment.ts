@@ -10,41 +10,38 @@ export class Appointment {
     id: number;
 
     @ManyToOne(() => Patient, patient => patient.appointments, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'patientId' })
+    @JoinColumn({ name: 'patient_id' }) // Use snake_case for the foreign key column name
     patient: Patient;
 
-    @Column()
+    @Column({ name: 'patient_id' }) // Explicitly map to patient_id column
     patientId: number;
 
     @ManyToOne(() => Doctor, doctor => doctor.appointments, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'doctorId' })
+    @JoinColumn({ name: 'doctor_id' }) // Use snake_case for the foreign key column name
     doctor: Doctor;
 
-    @Column()
+    @Column({ name: 'doctor_id' }) // Explicitly map to doctor_id column
     doctorId: number;
 
-    // Corrected ManyToOne relationship to DoctorTimeSlot
-    // DoctorTimeSlot does not have an 'appointments' property.
-    // We link to the DoctorTimeSlot entity itself.
-    @ManyToOne(() => DoctorTimeSlot, timeSlot => timeSlot.id, { onDelete: 'CASCADE' }) // Using timeSlot.id as the inverse side property
-    @JoinColumn({ name: 'timeSlotId' })
+    @ManyToOne(() => DoctorTimeSlot, timeSlot => timeSlot.appointments, { onDelete: 'CASCADE' }) // Corrected inverse side
+    @JoinColumn({ name: 'time_slot_id' }) // Use snake_case for the foreign key column name
     timeSlot: DoctorTimeSlot;
 
-    @Column()
+    @Column({ name: 'time_slot_id' }) // Explicitly map to time_slot_id column
     timeSlotId: number;
 
-    @Column({ type: 'date' })
-    appointmentDate: string; // ISO 8601 format: YYYY-MM-DD
+    @Column({ type: 'date', name: 'appointment_date' }) // Use snake_case for column name
+    appointmentDate: string; // ISO 8601 format:YYYY-MM-DD
 
-    @Column({ type: 'time' })
+    @Column({ type: 'time', name: 'appointment_time' }) // Use snake_case for column name
     appointmentTime: string; // HH:MM
 
     @Column({ default: 'scheduled' })
     status: string; // e.g., 'scheduled', 'completed', 'cancelled'
 
-    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', name: 'created_at' }) // Use snake_case
     createdAt: Date;
 
-    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP', name: 'updated_at' }) // Use snake_case
     updatedAt: Date;
 }
