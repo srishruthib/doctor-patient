@@ -7,6 +7,7 @@ import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { DoctorAvailability } from '../entities/DoctorAvailability';
 import { DoctorTimeSlot } from '../entities/DoctorTimeSlot';
+import { CreateDoctorAvailabilityDto } from './dto/create-doctor-availability.dto'; // <--- ADDED THIS IMPORT
 
 @Injectable()
 export class DoctorService {
@@ -68,7 +69,7 @@ export class DoctorService {
     doctorId: number,
     createAvailabilityDto: CreateDoctorAvailabilityDto,
   ): Promise<DoctorAvailability> {
-    const doctor = await this.findDoctorById(doctorId);
+    const doctor = await this.findDoctorById(doctorId); // Fetch the doctor entity
 
     const { date, startTime, endTime, breakTimeStart, breakTimeEnd } = createAvailabilityDto;
 
@@ -77,15 +78,19 @@ export class DoctorService {
     });
 
     if (!availability) {
+      // Create new availability, linking to doctor via doctorId
       availability = this.doctorAvailabilityRepository.create({
-        doctor,
+        doctorId: doctor.id, // Use the doctor's ID for the foreign key
         date,
         startTime,
         endTime,
         breakTimeStart,
         breakTimeEnd,
       });
+      // Assign the full doctor object for the relationship if needed later
+      availability.doctor = doctor;
     } else {
+      // Update existing availability
       Object.assign(availability, { startTime, endTime, breakTimeStart, breakTimeEnd });
     }
 
@@ -117,7 +122,8 @@ export class DoctorService {
 
       if (!isDuringBreak) {
         const slot = this.doctorTimeSlotRepository.create({
-          availability,
+          availability: availability, // Pass the DoctorAvailability entity
+          availabilityId: availability.id, // Also pass the ID for the foreign key column
           slotTime: currentTime.toTimeString().substring(0, 5),
           isBooked: false,
         });

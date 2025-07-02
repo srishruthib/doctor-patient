@@ -1,37 +1,35 @@
 // src/entities/DoctorAvailability.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Doctor } from './Doctor';
+import { DoctorTimeSlot } from './DoctorTimeSlot';
 
-@Entity('doctor_availabilities')
+@Entity()
 export class DoctorAvailability {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
-    doctor_id: number; // Foreign key column
+    @ManyToOne(() => Doctor, doctor => doctor.availabilities, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'doctor_id' }) // Use snake_case for the foreign key column name
+    doctor: Doctor; // This is the relationship property
 
-    @ManyToOne(() => Doctor, doctor => doctor.availabilities)
-    @JoinColumn({ name: 'doctor_id' }) // Specifies the foreign key column
-    doctor: Doctor;
+    @Column({ name: 'doctor_id' }) // Explicitly map to doctor_id column
+    doctorId: number; // This is the actual foreign key property
 
     @Column({ type: 'date' })
-    date: string; // ISO-MM-DD
+    date: string; // YYYY-MM-DD
 
-    @Column({ type: 'time' })
-    start_time: string; // HH:MM:SS
+    @Column({ type: 'time', name: 'start_time' }) // Use snake_case for column name
+    startTime: string; // HH:MM (camelCase property for code)
 
-    @Column({ type: 'time' })
-    end_time: string; // HH:MM:SS
+    @Column({ type: 'time', name: 'end_time' }) // Use snake_case for column name
+    endTime: string; // HH:MM (camelCase property for code)
 
-    @Column({ type: 'jsonb', nullable: true })
-    weekdays: string[]; // e.g., ['Monday', 'Tuesday']
+    @Column({ type: 'time', nullable: true, name: 'break_time_start' }) // Use snake_case for column name
+    breakTimeStart: string; // HH:MM (camelCase property for code)
 
-    @Column()
-    session: string; // 'morning', 'afternoon', 'evening'
+    @Column({ type: 'time', nullable: true, name: 'break_time_end' }) // Use snake_case for column name
+    breakTimeEnd: string; // HH:MM (camelCase property for code)
 
-    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-    created_at: Date;
-
-    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
-    updated_at: Date;
+    @OneToMany(() => DoctorTimeSlot, timeSlot => timeSlot.availability)
+    timeSlots: DoctorTimeSlot[]; // This defines the relationship array
 }

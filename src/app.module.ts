@@ -8,7 +8,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Your application's feature modules
 import { AuthModule } from './auth/auth.module';
-import { DoctorsModule } from './doctors/doctors.module'; // Corrected to plural 'DoctorsModule'
+import { DoctorsModule } from './doctors/doctors.module';
 import { PatientModule } from './patient/patient.module';
 
 // Your entities
@@ -41,7 +41,7 @@ import { Appointment } from './entities/Appointment';
       }),
     }),
     AuthModule,
-    DoctorsModule, // Use DoctorsModule (plural)
+    DoctorsModule,
     PatientModule,
   ],
   controllers: [],

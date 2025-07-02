@@ -1,13 +1,18 @@
 // src/entities/Doctor.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { Appointment } from './Appointment';
 import { DoctorAvailability } from './DoctorAvailability';
-import { DoctorTimeSlot } from './DoctorTimeSlot';
+import { Appointment } from './Appointment';
 
-@Entity('doctors')
+@Entity()
 export class Doctor {
     @PrimaryGeneratedColumn()
     id: number;
+
+    @Column({ unique: true })
+    email: string;
+
+    @Column()
+    password: string; // Hashed password
 
     @Column()
     first_name: string;
@@ -15,51 +20,25 @@ export class Doctor {
     @Column()
     last_name: string;
 
-    @Column({ unique: true })
-    email: string;
+    @Column()
+    specialization: string;
 
     @Column({ nullable: true })
-    password?: string;
+    phone_number: string;
 
     @Column({ nullable: true })
-    googleId?: string;
+    address: string;
 
-    @Column({ default: 'local' })
-    provider: string;
-
-    @Column({ default: 'doctor' })
+    @Column({ default: 'DOCTOR' })
     role: string;
-
-    @Column({ nullable: true })
-    phone_number: string | null;
-
-    @Column({ nullable: true })
-    specialization: string | null;
-
-    @Column({ nullable: true })
-    experience_years: number | null;
-
-    @Column({ nullable: true })
-    education: string | null;
-
-    @Column({ nullable: true })
-    clinic_name: string | null;
-
-    @Column({ nullable: true })
-    clinic_address: string | null;
 
     @OneToMany(() => DoctorAvailability, availability => availability.doctor)
     availabilities: DoctorAvailability[];
 
-    @OneToMany(() => DoctorTimeSlot, timeSlot => timeSlot.doctor)
-    timeSlots: DoctorTimeSlot[];
-
     @OneToMany(() => Appointment, appointment => appointment.doctor)
     appointments: Appointment[];
 
-    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-    created_at: Date;
-
-    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
-    updated_at: Date;
+    // REMOVED: No direct OneToMany relationship to DoctorTimeSlot from Doctor
+    // @OneToMany(() => DoctorTimeSlot, timeSlot => timeSlot.doctor)
+    // timeSlots: DoctorTimeSlot[];
 }

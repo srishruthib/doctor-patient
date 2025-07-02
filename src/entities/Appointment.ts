@@ -1,54 +1,50 @@
 // src/entities/Appointment.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
-import { Doctor } from './Doctor';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Patient } from './Patient';
-import { DoctorTimeSlot } from './DoctorTimeSlot'; // Changed from './TimeSlot' to './DoctorTimeSlot' assuming this is the correct TimeSlot entity
+import { Doctor } from './Doctor';
+import { DoctorTimeSlot } from './DoctorTimeSlot';
 
-@Entity('appointments') // Assuming you want a table named 'appointments'
+@Entity()
 export class Appointment {
     @PrimaryGeneratedColumn()
-    appointment_id!: number;
+    id: number;
 
-    // Foreign key columns
-    @Column()
-    doctor_id!: number;
-
-    @Column()
-    patient_id!: number;
+    @ManyToOne(() => Patient, patient => patient.appointments, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'patientId' })
+    patient: Patient;
 
     @Column()
-    slot_id!: number; // Assuming you link to DoctorTimeSlot by its ID
+    patientId: number;
 
-    @ManyToOne(() => Doctor, doctor => doctor.appointments)
-    @JoinColumn({ name: 'doctor_id' }) // Explicitly define foreign key column
-    doctor!: Doctor;
-
-    @ManyToOne(() => Patient, patient => patient.appointments)
-    @JoinColumn({ name: 'patient_id' }) // Explicitly define foreign key column
-    patient!: Patient;
-
-    @ManyToOne(() => DoctorTimeSlot, timeSlot => timeSlot.appointments) // Corrected entity reference
-    @JoinColumn({ name: 'slot_id' }) // Explicitly define foreign key column
-    slot!: DoctorTimeSlot; // Changed type to DoctorTimeSlot
-
-    @Column({ type: 'date' }) // Store date as a proper date type
-    appointment_date!: string;
+    @ManyToOne(() => Doctor, doctor => doctor.appointments, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'doctorId' })
+    doctor: Doctor;
 
     @Column()
-    time_slot_value!: string; // This column might store "09:00 - 09:15" if you prefer string representation
+    doctorId: number;
+
+    // Corrected ManyToOne relationship to DoctorTimeSlot
+    // DoctorTimeSlot does not have an 'appointments' property.
+    // We link to the DoctorTimeSlot entity itself.
+    @ManyToOne(() => DoctorTimeSlot, timeSlot => timeSlot.id, { onDelete: 'CASCADE' }) // Using timeSlot.id as the inverse side property
+    @JoinColumn({ name: 'timeSlotId' })
+    timeSlot: DoctorTimeSlot;
 
     @Column()
-    appointment_status!: string; // e.g., 'pending', 'confirmed', 'cancelled', 'completed'
+    timeSlotId: number;
 
-    @Column({ nullable: true })
-    reason?: string; // Made optional with '?' and nullable true
+    @Column({ type: 'date' })
+    appointmentDate: string; // ISO 8601 format: YYYY-MM-DD
 
-    @Column({ nullable: true })
-    notes?: string; // Made optional with '?' and nullable true
+    @Column({ type: 'time' })
+    appointmentTime: string; // HH:MM
 
-    @CreateDateColumn()
-    created_at!: Date;
+    @Column({ default: 'scheduled' })
+    status: string; // e.g., 'scheduled', 'completed', 'cancelled'
 
-    @UpdateDateColumn()
-    updated_at!: Date;
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+    createdAt: Date;
+
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+    updatedAt: Date;
 }

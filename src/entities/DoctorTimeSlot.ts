@@ -1,38 +1,22 @@
 // src/entities/DoctorTimeSlot.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
-import { Doctor } from './Doctor';
-import { Appointment } from './Appointment';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { DoctorAvailability } from './DoctorAvailability';
 
-@Entity('doctor_time_slots')
+@Entity()
 export class DoctorTimeSlot {
     @PrimaryGeneratedColumn()
-    slot_id: number;
+    id: number;
 
-    @Column()
-    doctor_id: number;
+    @ManyToOne(() => DoctorAvailability, availability => availability.timeSlots, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'availability_id' }) // Use snake_case for the foreign key column name
+    availability: DoctorAvailability; // This is the relationship property
 
-    @ManyToOne(() => Doctor, doctor => doctor.timeSlots)
-    @JoinColumn({ name: 'doctor_id' })
-    doctor: Doctor;
+    @Column({ name: 'availability_id' }) // Explicitly map to availability_id column
+    availabilityId: number; // This is the actual foreign key property
 
-    @Column({ type: 'date' })
-    date: string;
+    @Column({ type: 'time', name: 'slot_time' }) // Use snake_case for column name
+    slotTime: string; // HH:MM
 
-    @Column({ type: 'time' })
-    start_time: string;
-
-    @Column({ type: 'time' })
-    end_time: string;
-
-    @Column({ default: true })
-    is_available: boolean;
-
-    @OneToMany(() => Appointment, appointment => appointment.slot)
-    appointments: Appointment[];
-
-    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-    created_at: Date;
-
-    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
-    updated_at: Date;
+    @Column({ default: false, name: 'is_booked' }) // Use snake_case for column name
+    isBooked: boolean;
 }
