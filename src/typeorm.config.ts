@@ -19,6 +19,6 @@ export const AppDataSource = new DataSource({
     database: process.env.DB_NAME || 'hospital_app_db',
     entities: [Doctor, Patient, RefreshToken, DoctorAvailability, DoctorTimeSlot, Appointment],
     migrations: ['dist/migrations/*.js'],
-    synchronize: false,
+    synchronize: true,
     logging: true,
 });
