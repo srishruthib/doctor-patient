@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { DoctorService } from './doctors.service';
@@ -16,6 +17,13 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('doctors')
 export class DoctorsController {
   constructor(private readonly doctorService: DoctorService) { }
+
+  // ✅ Get current doctor profile (Protected)
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  getDoctorProfile(@Req() req: Request) {
+    return this.doctorService.findDoctorById(req.user['sub']); // safer: use service to fetch full profile
+  }
 
   // 🔍 Public search with query params
   @Get()
@@ -29,7 +37,11 @@ export class DoctorsController {
   // 📄 Get a doctor by ID
   @Get(':id')
   getDoctorById(@Param('id') id: string) {
-    return this.doctorService.findDoctorById(+id);
+    const doctorId = Number(id);
+    if (isNaN(doctorId)) {
+      throw new BadRequestException('Invalid doctor ID');
+    }
+    return this.doctorService.findDoctorById(doctorId);
   }
 
   // ➕ Create doctor (Protected with JWT)
@@ -37,12 +49,5 @@ export class DoctorsController {
   @Post()
   createDoctor(@Body() dto: CreateDoctorDto) {
     return this.doctorService.create(dto);
-  }
-
-  // ✅ Get current doctor profile (Protected)
-  @UseGuards(JwtAuthGuard)
-  @Get('profile')
-  getDoctorProfile(@Req() req: Request) {
-    return req.user; // Returns user data from decoded JWT
   }
 }
