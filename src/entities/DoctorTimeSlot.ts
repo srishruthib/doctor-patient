@@ -1,6 +1,7 @@
 // src/entities/DoctorTimeSlot.ts
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Doctor } from './Doctor';
+import { DoctorAvailability } from './DoctorAvailability'; // <--- NEW IMPORT
 import { Appointment } from './Appointment';
 
 @Entity('doctor_time_slots')
@@ -15,14 +16,16 @@ export class DoctorTimeSlot {
     @JoinColumn({ name: 'doctor_id' })
     doctor: Doctor;
 
-    @Column({ type: 'date' })
-    date: string;
+    // Link to DoctorAvailability
+    @Column()
+    doctor_availability_id: number; // Foreign key to DoctorAvailability
 
-    @Column({ type: 'time' })
-    start_time: string;
+    @ManyToOne(() => DoctorAvailability, availability => availability.timeSlots) // <--- NEW RELATIONSHIP
+    @JoinColumn({ name: 'doctor_availability_id' }) // Specifies the foreign key column
+    doctor_availability: DoctorAvailability; // <--- NEW PROPERTY
 
-    @Column({ type: 'time' })
-    end_time: string;
+    @Column({ type: 'time' }) // This will be the 30-min slot time
+    slot_time: string;
 
     @Column({ default: true })
     is_available: boolean;

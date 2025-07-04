@@ -10,6 +10,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { DoctorsModule } from './doctors/doctors.module';
 import { PatientModule } from './patient/patient.module';
+import { AvailabilityModule } from './availability/availability.module'; // <--- THIS LINE IS CRITICAL AND MUST BE ADDED
 
 // Your existing entities (ensure all are listed)
 import { Doctor } from './entities/Doctor';
@@ -17,40 +18,35 @@ import { Patient } from './entities/Patient';
 import { RefreshToken } from './entities/RefreshToken';
 import { DoctorAvailability } from './entities/DoctorAvailability';
 import { DoctorTimeSlot } from './entities/DoctorTimeSlot';
-import { Appointment } from './entities/Appointment';
+import { Appointment } from './entities/Appointment'; // Ensure Appointment entity is imported
 
 @Module({
   imports: [
-    // Your ConfigModule setup (global and envFilePath)
     ConfigModule.forRoot({
       isGlobal: true, // Makes the ConfigModule available everywhere
       envFilePath: '.env', // Path to your .env file
     }),
-    // Your TypeOrmModule.forRootAsync setup
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule], // Import Nest's ConfigModule here
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
+        port: parseInt(configService.get<string>('DB_PORT') || '5432', 10), // Ensure port is parsed as number
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
-        // List all your entities here from your project
-        entities: [Doctor, Patient, RefreshToken, DoctorAvailability, DoctorTimeSlot, Appointment],
-        // Set synchronize based on NODE_ENV for safety in production
-        synchronize: configService.get<string>('NODE_ENV') !== 'production',
-        logging: true, // Keep logging for debugging
+        entities: [Doctor, Patient, RefreshToken, DoctorAvailability, DoctorTimeSlot, Appointment], // List all your entities here
+        synchronize: configService.get<string>('NODE_ENV') !== 'production', // Set to false in production
+        logging: true, // Enable logging for debugging SQL queries
       }),
     }),
-    // Your application's feature modules
     AuthModule,
     DoctorsModule,
     PatientModule,
-    // Removed conflicting UsersModule and DoctorsModule from the other side of the merge
+    AvailabilityModule, // <--- THIS LINE IS CRITICAL AND MUST BE ADDED
   ],
-  controllers: [], // Keep empty if no root controllers
-  providers: [],   // Keep empty if no root providers
+  controllers: [],
+  providers: [],
 })
 export class AppModule { }

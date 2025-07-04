@@ -1,6 +1,7 @@
 // src/entities/DoctorAvailability.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm'; // <--- Added OneToMany
 import { Doctor } from './Doctor';
+import { DoctorTimeSlot } from './DoctorTimeSlot'; // <--- NEW IMPORT
 
 @Entity('doctor_availabilities')
 export class DoctorAvailability {
@@ -28,6 +29,9 @@ export class DoctorAvailability {
 
     @Column()
     session: string; // 'morning', 'afternoon', 'evening'
+
+    @OneToMany(() => DoctorTimeSlot, timeSlot => timeSlot.doctor_availability) // <--- NEW RELATIONSHIP
+    timeSlots: DoctorTimeSlot[]; // <--- NEW PROPERTY
 
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     created_at: Date;
