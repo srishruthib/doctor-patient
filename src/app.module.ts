@@ -8,7 +8,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Your existing modules
 import { AuthModule } from './auth/auth.module';
-import { DoctorModule } from './doctor/doctor.module';
+import { DoctorsModule } from './doctors/doctors.module';
 import { PatientModule } from './patient/patient.module';
 
 // Your existing entities (ensure all are listed)
@@ -46,7 +46,7 @@ import { Appointment } from './entities/Appointment';
     }),
     // Your application's feature modules
     AuthModule,
-    DoctorModule,
+    DoctorsModule,
     PatientModule,
     // Removed conflicting UsersModule and DoctorsModule from the other side of the merge
   ],
