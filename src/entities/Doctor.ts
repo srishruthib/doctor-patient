@@ -9,53 +9,45 @@ export class Doctor {
     @PrimaryGeneratedColumn()
     id: number;
 
+    @Column({ unique: true })
+    email: string;
+
+    @Column()
+    password_hash: string; // Store hashed password
+
     @Column()
     first_name: string;
 
     @Column()
     last_name: string;
 
-    @Column({ unique: true })
-    email: string;
+    @Column({ nullable: true })
+    specialization: string;
 
     @Column({ nullable: true })
-    password?: string;
+    phone_number: string;
 
     @Column({ nullable: true })
-    googleId?: string;
+    address: string;
 
-    @Column({ default: 'local' })
-    provider: string;
+    @Column({ default: 'DOCTOR' }) // Default role for doctors
+    role: string; // 'DOCTOR'
 
-    @Column({ default: 'doctor' })
-    role: string;
+    @Column({
+        type: 'enum',
+        enum: ['stream', 'wave'],
+        default: 'stream', // Default scheduling type
+    })
+    schedule_Type: 'stream' | 'wave'; // <--- ADD THIS NEW COLUMN
 
-    @Column({ nullable: true })
-    phone_number: string | null;
-
-    @Column({ nullable: true })
-    specialization: string | null;
-
-    @Column({ nullable: true })
-    experience_years: number | null;
-
-    @Column({ nullable: true })
-    education: string | null;
-
-    @Column({ nullable: true })
-    clinic_name: string | null;
-
-    @Column({ nullable: true })
-    clinic_address: string | null;
+    @OneToMany(() => Appointment, appointment => appointment.doctor)
+    appointments: Appointment[];
 
     @OneToMany(() => DoctorAvailability, availability => availability.doctor)
     availabilities: DoctorAvailability[];
 
     @OneToMany(() => DoctorTimeSlot, timeSlot => timeSlot.doctor)
     timeSlots: DoctorTimeSlot[];
-
-    @OneToMany(() => Appointment, appointment => appointment.doctor)
-    appointments: Appointment[];
 
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     created_at: Date;

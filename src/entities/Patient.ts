@@ -17,7 +17,7 @@ export class Patient {
     email: string;
 
     @Column({ nullable: true })
-    password?: string;
+    password_hash?: string; // <--- CORRECTED: Renamed to password_hash
 
     @Column({ nullable: true })
     googleId?: string;

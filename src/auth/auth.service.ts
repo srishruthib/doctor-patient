@@ -30,7 +30,7 @@ export class AuthService {
     ) { }
 
     async signup(signupDto: AuthSignupDto): Promise<{ message: string }> {
-        const { email, password, role } = signupDto;
+        const { email, password, role, first_name, last_name, specialization, phone_number, address } = signupDto; // <--- MODIFIED: Destructure all fields
 
         // Check if user already exists
         const existingDoctor = await this.doctorsRepository.findOne({ where: { email } });
@@ -42,17 +42,28 @@ export class AuthService {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Corrected comparison for Role enum values using string literals
-        if (role === 'DOCTOR') { // Explicitly compare with string literal 'DOCTOR'
+        // Corrected comparison for Role enum values and explicit property assignment
+        if (role === Role.Doctor) { // <--- CORRECTED: Use Role.Doctor (PascalCase)
             const newDoctor = this.doctorsRepository.create({
-                ...signupDto,
-                password: hashedPassword,
+                email,
+                first_name,
+                last_name,
+                specialization, // Optional, will be undefined if not provided in DTO
+                phone_number,   // Optional
+                address,        // Optional
+                password_hash: hashedPassword, // <--- CORRECTED: Use password_hash
+                role: Role.Doctor as string, // Ensure role is explicitly set as string literal for entity
             });
             await this.doctorsRepository.save(newDoctor);
-        } else if (role === 'PATIENT') { // Explicitly compare with string literal 'PATIENT'
+        } else if (role === Role.Patient) { // <--- CORRECTED: Use Role.Patient (PascalCase)
             const newPatient = this.patientsRepository.create({
-                ...signupDto,
-                password: hashedPassword,
+                email,
+                first_name,
+                last_name,
+                // Patient specific fields if any, otherwise omit specialization, phone_number, address
+                // For now, assuming these are only for Doctor, so not passing them for Patient
+                password_hash: hashedPassword, // <--- CORRECTED: Use password_hash
+                role: Role.Patient as string, // Ensure role is explicitly set as string literal for entity
             });
             await this.patientsRepository.save(newPatient);
         } else {
@@ -71,12 +82,12 @@ export class AuthService {
         // Try to find in Doctors
         user = await this.doctorsRepository.findOne({ where: { email } });
         if (user) {
-            userRole = 'DOCTOR' as Role; // Assign uppercase string literal, cast to Role
+            userRole = Role.Doctor; // <--- CORRECTED: Use Role.Doctor (PascalCase)
         } else {
             // Try to find in Patients
             user = await this.patientsRepository.findOne({ where: { email } });
             if (user) {
-                userRole = 'PATIENT' as Role; // Assign uppercase string literal, cast to Role
+                userRole = Role.Patient; // <--- CORRECTED: Use Role.Patient (PascalCase)
             }
         }
 
@@ -84,7 +95,12 @@ export class AuthService {
             throw new UnauthorizedException('Invalid credentials.');
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+        // Compare the provided password with the stored password_hash
+        // Ensure that user.password_hash actually exists on the Doctor/Patient entity
+        if (!('password_hash' in user) || !user.password_hash) {
+            throw new InternalServerErrorException('User entity missing password hash property.');
+        }
+        const isPasswordValid = await bcrypt.compare(password, user.password_hash); // <--- CORRECTED: Use user.password_hash
         if (!isPasswordValid) {
             throw new UnauthorizedException('Invalid credentials.');
         }
@@ -153,9 +169,9 @@ export class AuthService {
     }
 
     async validateUserByIdAndRole(userId: number, role: Role): Promise<Doctor | Patient | undefined> {
-        if (role === 'DOCTOR') { // Explicitly compare with string literal 'DOCTOR'
+        if (role === Role.Doctor) { // <--- CORRECTED: Use Role.Doctor (PascalCase)
             return this.doctorsRepository.findOne({ where: { id: userId } });
-        } else if (role === 'PATIENT') { // Explicitly compare with string literal 'PATIENT'
+        } else if (role === Role.Patient) { // <--- CORRECTED: Use Role.Patient (PascalCase)
             return this.patientsRepository.findOne({ where: { id: userId } });
         }
         return undefined;
@@ -187,28 +203,38 @@ export class AuthService {
         // Try to find if the user exists as a Doctor
         user = await this.doctorsRepository.findOne({ where: { email } });
         if (user) {
-            role = 'DOCTOR' as Role; // Assign uppercase string literal, cast to Role
+            role = Role.Doctor; // <--- CORRECTED: Use Role.Doctor (PascalCase)
         } else {
             // Try to find if the user exists as a Patient
             user = await this.patientsRepository.findOne({ where: { email } });
             if (user) {
-                role = 'PATIENT' as Role; // Assign uppercase string literal, cast to Role
+                role = Role.Patient; // <--- CORRECTED: Use Role.Patient (PascalCase)
             }
         }
 
         if (!user) {
             // If user does not exist, create a new Patient by default (or based on some logic)
             isNewUser = true;
-            role = 'PATIENT' as Role; // Default to Patient if not found, cast to Role
+            role = Role.Patient; // <--- CORRECTED: Use Role.Patient (PascalCase)
             const newPatient = this.patientsRepository.create({
                 email,
                 first_name: firstName,
                 last_name: lastName,
-                password: '', // Google users don't have a password in your DB
-                role: 'PATIENT' as string, // Use string literal, cast to string for the entity column
+                password_hash: '', // <--- CORRECTED: Use password_hash
+                role: Role.Patient as string, // Use string literal, cast to string for the entity column
             });
-            user = await this.patientsRepository.save(newPatient);
+            user = await this.patientsRepository.save(newPatient) as Patient; // <--- Explicitly cast to Patient
+        } else {
+            // If user exists, ensure 'user' variable is correctly typed as Doctor | Patient
+            // This 'else' block is primarily for type narrowing to ensure 'user' is correctly
+            // treated as Doctor | Patient for the return statement.
+            if (user instanceof Doctor) {
+                user = user as Doctor;
+            } else if (user instanceof Patient) {
+                user = user as Patient;
+            }
         }
+
 
         // Generate tokens for the user
         const accessToken = await this.generateAccessToken(user.id, role);
@@ -230,6 +256,6 @@ export class AuthService {
             await this.refreshTokensRepository.save(newRefreshTokenEntity);
         }
 
-        return { accessToken, refreshToken, user, isNewUser };
+        return { accessToken, refreshToken, user: user as Doctor | Patient, isNewUser }; // <--- Explicitly cast user for return
     }
 }
