@@ -1,3 +1,4 @@
+// src/doctors/doctors.controller.ts
 import {
   Controller,
   Get,
@@ -15,7 +16,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class DoctorsController {
   constructor(private readonly doctorsService: DoctorsService) { }
 
-  // 🔍 Public search with query params
   @Get()
   searchDoctors(
     @Query('name') name: string,
@@ -24,16 +24,24 @@ export class DoctorsController {
     return this.doctorsService.search(name, specialization);
   }
 
-  // 📄 Get a doctor by ID
   @Get(':id')
   getDoctorById(@Param('id') id: string) {
     return this.doctorsService.getById(id);
   }
 
-  // ➕ Create doctor (Protected with JWT)
   @UseGuards(JwtAuthGuard)
   @Post()
   createDoctor(@Body() dto: CreateDoctorDto) {
     return this.doctorsService.create(dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/availability')
+  getAvailability(
+    @Param('id') id: string,
+    @Query('date') date?: string,
+    @Query('start_time') start_time?: string,
+  ) {
+    return this.doctorsService.getAvailability(id, date, start_time);
   }
 }
